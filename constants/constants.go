@@ -1,5 +1,7 @@
 package constants
 
+import "github.com/chromedp/chromedp"
+
 var (
 
 	// Expense categories
@@ -12,4 +14,9 @@ var (
 
 	// Naming
 	VACANT = "Vacant"
+
+	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", true),
+		chromedp.Flag("disable-gpu", false),
+	)
 )
