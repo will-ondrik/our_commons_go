@@ -16,7 +16,7 @@ import (
 func main() {
 	// Set Chrome options
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
+		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", false),
 	)
 
@@ -26,7 +26,7 @@ func main() {
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	url := "https://www.ourcommons.ca/proactivedisclosure/en/members"
@@ -51,7 +51,15 @@ func main() {
 		log.Printf("Error extracting MP data: %v", err)
 	}
 
+	// divides mp's into chunks for multithreaded processing
+
 	fmt.Println(mps)
 
-	cancel()
+	err = chromedp.Cancel(ctx)
+	if err != nil {
+		fmt.Println("Failed to close chrome instance")
+		return
+	}
+	fmt.Println("Script completed")
+
 }
