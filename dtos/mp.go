@@ -14,7 +14,6 @@ type MpWithExpenseCategories struct {
 }
 
 type Category struct {
-	Name         string  `json:"name"`
 	ExpenseTotal float64 `json:"expenseTotal"`
 	Href         string  `json:"href"`
 }
