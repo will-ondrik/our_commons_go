@@ -87,7 +87,7 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 	}
 
 	if html != "" {
-		fmt.Printf("\nFound html: %s\n", html)
+		fmt.Println("html found")
 	}
 	err = chromedp.Cancel(ctx)
 	if err != nil {
