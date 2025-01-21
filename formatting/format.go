@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func Name(fullName string, mp *dtos.MpWithExpenseCategories) {
@@ -38,13 +39,64 @@ func Name(fullName string, mp *dtos.MpWithExpenseCategories) {
 }
 
 func ExpenseToFloat(expenseTotal string) (float64, error) {
-	trimmedExpense := strings.TrimPrefix(expenseTotal, "$")
+	trimmedExpense := strings.Trim(expenseTotal, "()")
+	trimmedExpense = strings.TrimPrefix(trimmedExpense, "$")
 	trimmedExpense = strings.ReplaceAll(trimmedExpense, ",", "")
 
 	expenseFloat, err := strconv.ParseFloat(trimmedExpense, 64)
 	if err != nil {
-		return -1, fmt.Errorf("Failed to parse string: %v", err)
+		return -1, fmt.Errorf("Failed to parse string: '%s'\nError: %v", trimmedExpense, err)
 	}
 
-	return float64(expenseFloat), nil
+	return expenseFloat, nil
+}
+
+func StringToDateRange(dateStr string) dtos.DateRange {
+	dateStr = strings.TrimSpace(dateStr)
+	fmt.Printf("Date string: %s\n", dateStr)
+
+	dateArr := strings.Split(dateStr, " ")
+	fmt.Printf("Start Date: %s\nEndDate: %s\n", dateArr[1], dateArr[2])
+
+	return dtos.DateRange{
+		StartDate: dateArr[1],
+		EndDate:   dateArr[3],
+	}
+}
+
+func FlightPointsToFloat(flightPoints string) (float64, error) {
+	pointsFloat, err := strconv.ParseFloat(flightPoints, 64)
+	if err != nil {
+		return -1, fmt.Errorf("Failed to parse string: %s\nError: %v", flightPoints, err)
+	}
+
+	return pointsFloat, nil
+}
+
+func TravellerName(name string) dtos.Name {
+	name = strings.TrimSpace(name)
+
+	if strings.Contains(name, "Not Listed") || name == "" {
+		return dtos.Name{
+			FirstName: "Not Listed",
+			LastName:  "Not Listed",
+		}
+	}
+	nameArr := strings.Split(name, ", ")
+
+	return dtos.Name{
+		FirstName: nameArr[1],
+		LastName:  nameArr[0],
+	}
+}
+
+// Special case in Travel expenses
+// The city listed is always in all caps
+// Format for proper punctuation
+func City(cityName string) string {
+	cityName = strings.ToLower(cityName)
+	runes := []rune(cityName)
+	runes[0] = unicode.ToUpper(runes[0])
+
+	return string(runes)
 }
