@@ -16,7 +16,7 @@ var (
 	VACANT = "Vacant"
 
 	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
+		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
 	)
 )
