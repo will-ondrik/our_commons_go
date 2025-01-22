@@ -53,10 +53,8 @@ func ExpenseToFloat(expenseTotal string) (float64, error) {
 
 func StringToDateRange(dateStr string) dtos.DateRange {
 	dateStr = strings.TrimSpace(dateStr)
-	fmt.Printf("Date string: %s\n", dateStr)
 
 	dateArr := strings.Split(dateStr, " ")
-	fmt.Printf("Start Date: %s\nEndDate: %s\n", dateArr[1], dateArr[2])
 
 	return dtos.DateRange{
 		StartDate: dateArr[1],
