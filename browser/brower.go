@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
@@ -60,6 +59,11 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 		}
 		output = formattedTravelData
 	case "extractContractExpenses":
+		formattedHospitalityData, err := extract.MpHospitalityExpenses(doc)
+		if err != nil {
+			taskErr = err
+		}
+		output = formattedHospitalityData
 	case "extractHospitalityExpenses":
 	default:
 		log.Printf("Unknown task: %s", taskType)
@@ -78,7 +82,6 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 	fmt.Println("Looking for html element...")
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(task.Url),
-		chromedp.Sleep(3*time.Second),
 		chromedp.WaitVisible(task.ExtractFromElement),
 		chromedp.OuterHTML(task.ExtractFromElement, &html),
 	)
