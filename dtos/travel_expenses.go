@@ -1,7 +1,7 @@
 package dtos
 
 // Travel expense dtos
-type TravelExpenses struct {
+type TravelExpense struct {
 	Claim        string       `json:"claim"`
 	Dates        DateRange    `json:"dateRange"`
 	TravelLogs   []Traveller  `json:"travelLogs"`
