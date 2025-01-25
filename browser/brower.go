@@ -59,12 +59,13 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 		}
 		output = formattedTravelData
 	case "extractContractExpenses":
+
+	case "extractHospitalityExpenses":
 		formattedHospitalityData, err := extract.MpHospitalityExpenses(doc)
 		if err != nil {
 			taskErr = err
 		}
 		output = formattedHospitalityData
-	case "extractHospitalityExpenses":
 	default:
 		log.Printf("Unknown task: %s", taskType)
 
@@ -91,6 +92,7 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 
 	if html != "" {
 		fmt.Println("html found")
+
 	}
 	err = chromedp.Cancel(ctx)
 	if err != nil {
