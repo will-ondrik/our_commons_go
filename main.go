@@ -5,9 +5,11 @@ import (
 	"etl_our_commons/dtos"
 	"fmt"
 	"log"
+	"time"
 )
 
 func main() {
+	startTime := time.Now()
 	browser := &browser.Browser{}
 
 	task := dtos.Task{
@@ -26,22 +28,31 @@ func main() {
 		fmt.Printf("\nMP: %+v\n", mp)
 	}
 
-	for i, mp := range mpData.([]*dtos.MpWithExpenseCategories) {
-		if i == 0 {
-			task = dtos.Task{
-				Type:               "extractTravelExpenses",
-				Url:                mp.TravelExpenses.Href,
-				ExtractFromElement: "#data-table",
-			}
+	for _, mp := range mpData.([]*dtos.MpWithExpenseCategories) {
 
-			mpTravelExpenses, err := browser.RunTask(task)
-			if err != nil {
-				fmt.Printf("\nTravel expenses extraction failed: %v", err)
-			}
+		if mp.HospitalityExpenses.Href == "nil" {
+			fmt.Println("MP is nil: ", mp)
+			continue
+		}
+		// TODO: // If href is nil, skip task
+		task = dtos.Task{
+			Type:               "extractHospitalityExpenses",
+			Url:                mp.HospitalityExpenses.Href,
+			ExtractFromElement: "#data-table",
+		}
 
-			fmt.Println(mpTravelExpenses.([]*dtos.TravelExpenses))
+		hospitalityExpenses, err := browser.RunTask(task)
+		if err != nil {
+			fmt.Printf("\nHospitality expenses extraction failed: %v", err)
+		}
+
+		for _, te := range hospitalityExpenses.([]*dtos.HospitalityExpense) {
+			fmt.Printf("\n%+v\n", te)
 		}
 
 	}
+
+	runTime := time.Now().Sub(startTime)
+	fmt.Println("Total Runtime: ", runTime)
 
 }
