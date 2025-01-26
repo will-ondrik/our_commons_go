@@ -52,7 +52,15 @@ func ExpenseToFloat(expenseTotal string) (float64, error) {
 }
 
 func StringToDateRange(dateStr string) dtos.DateRange {
+	fmt.Println("Date string: ", dateStr)
 	dateStr = strings.TrimSpace(dateStr)
+
+	if dateStr == "" {
+		return dtos.DateRange{
+			StartDate: "Not Provided",
+			EndDate:   "Not Provided",
+		}
+	}
 
 	dateArr := strings.Split(dateStr, " ")
 
@@ -97,4 +105,23 @@ func City(cityName string) string {
 	runes[0] = unicode.ToUpper(runes[0])
 
 	return string(runes)
+}
+
+func Supplier(supplier string) string {
+	if strings.ContainsAny(supplier, " - ") {
+		// English and French version present
+		versions := strings.Split(supplier, " - ")
+		supplier = versions[0]
+	}
+	return supplier
+}
+
+func EventType(text string) string {
+	text = strings.TrimSpace(text)
+	removeTitle := strings.ReplaceAll(text, "Type of Event", "")
+	removeClaim := strings.ReplaceAll(removeTitle, "Claim", "")
+	trimmed := strings.TrimSpace(removeClaim)
+	fmt.Println("Trimmed :", trimmed)
+
+	return trimmed
 }
