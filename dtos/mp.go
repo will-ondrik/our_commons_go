@@ -17,3 +17,10 @@ type Category struct {
 	ExpenseTotal float64 `json:"expenseTotal"`
 	Href         string  `json:"href"`
 }
+
+type MpExpensesResults struct {
+	TravelExpenses      []*TravelExpense
+	HospitalityExpenses []*HospitalityExpense
+	ContractExpenses    []*ContractExpense
+	Errors              []error
+}
