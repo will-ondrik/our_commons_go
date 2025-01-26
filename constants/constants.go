@@ -1,6 +1,10 @@
 package constants
 
-import "github.com/chromedp/chromedp"
+import (
+	"etl_our_commons/dtos"
+
+	"github.com/chromedp/chromedp"
+)
 
 var (
 
@@ -16,7 +20,31 @@ var (
 	VACANT = "Vacant"
 
 	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
+		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", false),
 	)
+
+	TravelTask = dtos.Task{
+		Type:               "extractTravelExpenses",
+		Url:                "",
+		ExtractFromElement: "#data-table",
+	}
+
+	HospitalityTask = dtos.Task{
+		Type:               "extractHospitalityExpenses",
+		Url:                "",
+		ExtractFromElement: "#data-table",
+	}
+
+	ContractTask = dtos.Task{
+		Type:               "extractContractExpenses",
+		Url:                "",
+		ExtractFromElement: "#data-table",
+	}
+
+	PollingTask = dtos.Task{
+		Type:               "polling",
+		Url:                "https://www.ourcommons.ca/proactivedisclosure/en/members/2022/1",
+		ExtractFromElement: ".dropdown-menu",
+	}
 )
