@@ -59,7 +59,11 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 		}
 		output = formattedTravelData
 	case "extractContractExpenses":
-
+		formattedContractData, err := extract.MpContractExpenses(doc)
+		if err != nil {
+			taskErr = err
+		}
+		output = formattedContractData
 	case "extractHospitalityExpenses":
 		formattedHospitalityData, err := extract.MpHospitalityExpenses(doc)
 		if err != nil {
