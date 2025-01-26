@@ -70,6 +70,8 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 			taskErr = err
 		}
 		output = formattedHospitalityData
+	case "polling":
+
 	default:
 		log.Printf("Unknown task: %s", taskType)
 
