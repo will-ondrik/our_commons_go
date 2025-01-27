@@ -71,6 +71,8 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 		}
 		output = formattedHospitalityData
 	case "polling":
+		formattedReports := extract.ExpenditureReports(doc)
+		output = formattedReports
 
 	default:
 		log.Printf("Unknown task: %s", taskType)
@@ -87,11 +89,14 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
 	var html string
 	fmt.Println("Looking for html element...")
-	err := chromedp.Run(ctx,
+	var err error
+
+	err = chromedp.Run(ctx,
 		chromedp.Navigate(task.Url),
 		chromedp.WaitVisible(task.ExtractFromElement),
 		chromedp.OuterHTML(task.ExtractFromElement, &html),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("Chrome instance failed: %v", err)
 	}
