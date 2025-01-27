@@ -20,7 +20,7 @@ var (
 	VACANT = "Vacant"
 
 	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
+		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
 	)
 
@@ -45,6 +45,6 @@ var (
 	PollingTask = dtos.Task{
 		Type:               "polling",
 		Url:                "https://www.ourcommons.ca/proactivedisclosure/en/members/2022/1",
-		ExtractFromElement: ".dropdown-menu",
+		ExtractFromElement: "main.ce-hoc-body-content",
 	}
 )
