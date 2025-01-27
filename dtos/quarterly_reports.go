@@ -5,7 +5,8 @@ type AllExpenditureReports struct {
 }
 
 type ExpenditureReport struct {
-	Year    string
-	Quarter float64
-	Href    string
+	Years     DateRange
+	DateRange DateRange
+	Quarter   int
+	Href      string
 }
