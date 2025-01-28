@@ -52,7 +52,6 @@ func ExpenseToFloat(expenseTotal string) (float64, error) {
 }
 
 func StringToDateRange(dateStr string) dtos.DateRange {
-	fmt.Println("Date string: ", dateStr)
 	dateStr = strings.TrimSpace(dateStr)
 
 	if dateStr == "" {
@@ -121,7 +120,6 @@ func EventType(text string) string {
 	removeTitle := strings.ReplaceAll(text, "Type of Event", "")
 	removeClaim := strings.ReplaceAll(removeTitle, "Claim", "")
 	trimmed := strings.TrimSpace(removeClaim)
-	fmt.Println("Trimmed :", trimmed)
 
 	return trimmed
 }
