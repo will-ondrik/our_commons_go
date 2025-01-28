@@ -86,12 +86,13 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 	return output, nil
 }
 
+// TODO: Need to handle timeouts or error page
+// Re-run function if either occur
 func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
 	var html string
 	fmt.Println("Looking for html element...")
-	var err error
 
-	err = chromedp.Run(ctx,
+	err := chromedp.Run(ctx,
 		chromedp.Navigate(task.Url),
 		chromedp.WaitVisible(task.ExtractFromElement),
 		chromedp.OuterHTML(task.ExtractFromElement, &html),
