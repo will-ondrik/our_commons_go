@@ -23,7 +23,6 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 			travelExpense := &dtos.TravelExpense{}
 			row.Find("td").Each(func(j int, cell *goquery.Selection) {
 				text := strings.TrimSpace(cell.Text())
-				fmt.Println("Index: ", j)
 				switch j {
 				case 0:
 					travelExpense.Claim = text
