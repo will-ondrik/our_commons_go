@@ -20,9 +20,15 @@ var (
 	VACANT = "Vacant"
 
 	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
+		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", false),
 	)
+
+	MpTask = dtos.Task{
+		Type:               "extractMps",
+		Url:                "",
+		ExtractFromElement: "#data-table",
+	}
 
 	TravelTask = dtos.Task{
 		Type:               "extractTravelExpenses",
