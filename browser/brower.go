@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
@@ -26,7 +27,8 @@ func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
 	ctx, cancelCtx := chromedp.NewContext(allocCtx)
 	defer cancelCtx()
 
-	doc, err := b.GetHtml(ctx, task)
+	//doc, err := b.GetHtml(ctx, task)
+	doc, err := b.GetHtml2(ctx, task)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to extract html: %v", err)
 	}
@@ -117,4 +119,83 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 	}
 	fmt.Println("Returning doc...")
 	return doc, nil
+}
+
+func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
+	var html string
+
+	attempts := 0
+	max_attempts := 5
+
+	for attempts < max_attempts {
+		ctx, cancel := chromedp.NewContext(ctx)
+		defer cancel()
+		fmt.Printf("Attempt %d...", attempts)
+		attempts++
+
+		var err error
+		if task.ExtractFromElement == "body" {
+			err = chromedp.Run(ctx,
+				chromedp.Navigate(task.Url),
+				chromedp.WaitReady(task.ExtractFromElement),
+				chromedp.OuterHTML(task.ExtractFromElement, &html),
+			)
+		} else {
+			err = chromedp.Run(ctx,
+				chromedp.Navigate(task.Url),
+				chromedp.WaitVisible(task.ExtractFromElement),
+				chromedp.OuterHTML(task.ExtractFromElement, &html),
+			)
+		}
+
+		if err != nil {
+			log.Println("Chrome instance failed")
+			b.CancelInstance(ctx)
+			continue
+		}
+
+		if html == "" {
+			log.Println("HTML empty. Retrying...")
+			b.CancelInstance(ctx)
+
+			continue
+		}
+		if b.IsErrorPage(html) {
+			log.Println("Rate limited. Sleeping...")
+			b.CancelInstance(ctx)
+			time.Sleep(2 * time.Second)
+			log.Println("Sleep period over.")
+			continue
+		}
+
+		if html != "" {
+			log.Println("Valid HTML found. Exiting...")
+			b.CancelInstance(ctx)
+
+			break
+		}
+
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Returning doc...")
+
+	return doc, nil
+}
+
+func (b *Browser) IsErrorPage(html string) bool {
+	if strings.Contains(html, "System Error") {
+		return true
+	}
+
+	return false
+}
+
+func (b *Browser) CancelInstance(ctx context.Context) {
+	chromedp.Cancel(ctx)
+	return
 }
