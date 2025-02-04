@@ -2,9 +2,12 @@ package main
 
 import (
 	"etl_our_commons/browser"
+	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"fmt"
-	"log"
+
+	//"log"
+
 	"time"
 )
 
@@ -12,47 +15,71 @@ func main() {
 	startTime := time.Now()
 	browser := &browser.Browser{}
 
-	task := dtos.Task{
-		Type:               "extractMps",
-		Url:                "https://www.ourcommons.ca/proactivedisclosure/en/members/2022/1",
-		ExtractFromElement: "table.table",
-	}
-
-	mpData, err := browser.RunTask(task)
+	task := constants.PollingTask
+	reports, err := browser.RunTask(task)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Err")
 	}
 
-	fmt.Println(mpData.([]*dtos.MpWithExpenseCategories))
-	for _, mp := range mpData.([]*dtos.MpWithExpenseCategories) {
-		fmt.Printf("\nMP: %+v\n", mp)
-	}
+	expenditureReports := reports.(dtos.AllExpenditureReports)
+	for _, report := range expenditureReports.Reports {
+		mpTask := constants.MpTask
+		mpTask.Url = report.Href
 
-	for _, mp := range mpData.([]*dtos.MpWithExpenseCategories) {
-
-		if mp.HospitalityExpenses.Href == "nil" {
-			fmt.Println("MP is nil: ", mp)
-			continue
-		}
-		// TODO: // If href is nil, skip task
-		task = dtos.Task{
-			Type:               "extractHospitalityExpenses",
-			Url:                mp.HospitalityExpenses.Href,
-			ExtractFromElement: "#data-table",
-		}
-
-		hospitalityExpenses, err := browser.RunTask(task)
+		mps, err := browser.RunTask(mpTask)
 		if err != nil {
-			fmt.Printf("\nHospitality expenses extraction failed: %v", err)
+			fmt.Println("Error extract MP data: ", err)
 		}
 
-		for _, te := range hospitalityExpenses.([]*dtos.HospitalityExpense) {
-			fmt.Printf("\n%+v\n", te)
-		}
+		mpData := mps.([]*dtos.MpWithExpenseCategories)
+		for _, mp := range mpData {
 
+			var travelExpenses []*dtos.TravelExpense
+			var contractExpenses []*dtos.ContractExpense
+			var hospitalityExpenses []*dtos.HospitalityExpense
+
+			if mp.TravelExpenses.Href != "" {
+				tt := constants.TravelTask
+				tt.Url = mp.TravelExpenses.Href
+
+				travelData, err := browser.RunTask(tt)
+				if err != nil {
+					fmt.Println("Travel extraction error: ", err)
+				}
+
+				travelExpenses = travelData.([]*dtos.TravelExpense)
+
+			}
+
+			if mp.ContractExpenses.Href != "" {
+				ct := constants.ContractTask
+				ct.Url = mp.ContractExpenses.Href
+
+				contractData, err := browser.RunTask(ct)
+				if err != nil {
+					fmt.Println("Contract extraction error: ", err)
+				}
+				contractExpenses = contractData.([]*dtos.ContractExpense)
+			}
+
+			if mp.HospitalityExpenses.Href != "" {
+				ht := constants.HospitalityTask
+				ht.Url = mp.HospitalityExpenses.Href
+
+				hospitalityData, err := browser.RunTask(ht)
+				if err != nil {
+					fmt.Println("Hospitality extraction error: ", err)
+				}
+
+				hospitalityExpenses = hospitalityData.([]*dtos.HospitalityExpense)
+			}
+
+			fmt.Println("Travel expenses: ", travelExpenses)
+			fmt.Println("Contract expenses: ", contractExpenses)
+			fmt.Println("Hospitality expenses: ", hospitalityExpenses)
+		}
 	}
 
 	runTime := time.Now().Sub(startTime)
 	fmt.Println("Total Runtime: ", runTime)
-
 }
