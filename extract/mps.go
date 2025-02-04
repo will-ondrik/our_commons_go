@@ -14,7 +14,8 @@ func Mps(doc *goquery.Document) ([]*dtos.MpWithExpenseCategories, error) {
 	var mps []*dtos.MpWithExpenseCategories
 	var parseErr error
 
-	doc.Find("tbody tr").Each(func(i int, row *goquery.Selection) {
+	dataTable := doc.Find("#data-table")
+	dataTable.Find("tbody tr").Each(func(i int, row *goquery.Selection) {
 
 		mp := &dtos.MpWithExpenseCategories{}
 		row.Find("td").Each(func(j int, cell *goquery.Selection) {
