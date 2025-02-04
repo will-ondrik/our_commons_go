@@ -20,32 +20,32 @@ var (
 	VACANT = "Vacant"
 
 	CHROME_OPTIONS = append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
+		chromedp.Flag("headless", false),
 		chromedp.Flag("disable-gpu", false),
 	)
 
 	MpTask = dtos.Task{
 		Type:               "extractMps",
 		Url:                "",
-		ExtractFromElement: "#data-table",
+		ExtractFromElement: "body",
 	}
 
 	TravelTask = dtos.Task{
 		Type:               "extractTravelExpenses",
 		Url:                "",
-		ExtractFromElement: "#data-table",
+		ExtractFromElement: "body",
 	}
 
 	HospitalityTask = dtos.Task{
 		Type:               "extractHospitalityExpenses",
 		Url:                "",
-		ExtractFromElement: "#data-table",
+		ExtractFromElement: "body",
 	}
 
 	ContractTask = dtos.Task{
 		Type:               "extractContractExpenses",
 		Url:                "",
-		ExtractFromElement: "#data-table",
+		ExtractFromElement: "body",
 	}
 
 	PollingTask = dtos.Task{
