@@ -90,6 +90,13 @@ func main() {
 	fmt.Println("Total Runtime: ", runTime)
 }
 */
+
+/*
+Runtimes
+- Sequential runtime (commented out): 47 minutes
+- Concurrent runtime (updated code): 27 minutes, 36 seconds
+*/
+
 // Worker and Rate Limits
 const WorkerLimit = 2
 const RequestsPerSecond = 2
