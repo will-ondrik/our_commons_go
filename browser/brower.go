@@ -19,8 +19,8 @@ type Browser struct {
 }
 
 func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
-	fmt.Printf("\nRunning task: %s...\n", task.Type)
-	fmt.Printf("\nVisiting URL: %s\n", task.Url)
+	fmt.Println("[RUNNING TASK]: ", task.Type)
+	fmt.Println("[VISTING URL]: ", task.Url)
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), constants.CHROME_OPTIONS...)
 	defer cancel()
 
