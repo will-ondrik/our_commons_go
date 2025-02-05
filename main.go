@@ -136,7 +136,8 @@ func main() {
 		}
 
 		for _, mp := range mps {
-			mpQueue <- mp // Send MPs to pool
+			// Send MPs to pool
+			mpQueue <- mp
 		}
 	}
 
