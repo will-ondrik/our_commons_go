@@ -2,14 +2,10 @@ package main
 
 import (
 	"etl_our_commons/browser"
-	//"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"etl_our_commons/tasks"
 	"fmt"
 	"sync"
-
-	//"log"
-
 	"time"
 )
 
