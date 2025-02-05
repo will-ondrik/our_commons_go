@@ -20,7 +20,7 @@ type Browser struct {
 
 func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
 	fmt.Println("[RUNNING TASK]: ", task.Type)
-	fmt.Println("[VISTING URL]: ", task.Url)
+	fmt.Println("[VISITING URL]: ", task.Url)
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), constants.CHROME_OPTIONS...)
 	defer cancel()
 
@@ -78,7 +78,6 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 
 	default:
 		log.Printf("Unknown task: %s", taskType)
-
 	}
 
 	if taskErr != nil {
@@ -106,7 +105,6 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 
 	if html != "" {
 		fmt.Println("html found")
-
 	}
 	err = chromedp.Cancel(ctx)
 	if err != nil {
@@ -125,43 +123,44 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 	var html string
 
 	attempts := 0
-	max_attempts := 5
+	maxAttempts := 5
 
-	for attempts < max_attempts {
-		ctx, cancel := chromedp.NewContext(ctx)
-		defer cancel()
-		fmt.Println("[ATTEMPT: %d]...", attempts)
+	for attempts < maxAttempts {
+		// Create a new child context for this attempt.
+		childCtx, cancel := chromedp.NewContext(ctx)
+		fmt.Printf("[ATTEMPT: %d]...\n", attempts)
 		attempts++
 
 		var err error
 		if task.ExtractFromElement == "body" {
-			err = chromedp.Run(ctx,
+			err = chromedp.Run(childCtx,
 				chromedp.Navigate(task.Url),
 				chromedp.WaitReady(task.ExtractFromElement),
 				chromedp.OuterHTML(task.ExtractFromElement, &html),
 			)
 		} else {
-			err = chromedp.Run(ctx,
+			err = chromedp.Run(childCtx,
 				chromedp.Navigate(task.Url),
 				chromedp.WaitVisible(task.ExtractFromElement),
 				chromedp.OuterHTML(task.ExtractFromElement, &html),
 			)
 		}
 
+		// Cancel the child context immediately.
+		cancel()
+
 		if err != nil {
 			fmt.Println("[CHROME INSTANCE FAILED] Retrying...")
-			b.CancelInstance(ctx)
 			continue
 		}
 
 		if html == "" {
 			fmt.Println("[EMPTY HTML] Retrying...")
-			b.CancelInstance(ctx)
 			continue
 		}
+
 		if b.IsErrorPage(html) {
 			fmt.Println("[RATE LIMITED] Sleeping...")
-			b.CancelInstance(ctx)
 			time.Sleep(2 * time.Second)
 			fmt.Println("[SLEEP OVER] Retrying...")
 			continue
@@ -169,13 +168,11 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 
 		if html != "" {
 			fmt.Println("[HTML FOUND] Done!")
-			b.CancelInstance(ctx)
 			break
 		}
-
 	}
 
-	if html == "" || attempts == 4 {
+	if html == "" {
 		fmt.Println("[FAILED TASK]")
 		return nil, fmt.Errorf("all attempts exhausted. task failed.\n")
 	}
@@ -186,16 +183,11 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 	}
 
 	fmt.Println("Returning doc...")
-
 	return doc, nil
 }
 
 func (b *Browser) IsErrorPage(html string) bool {
-	if strings.Contains(html, "System Error") {
-		return true
-	}
-
-	return false
+	return strings.Contains(html, "System Error")
 }
 
 func (b *Browser) CancelInstance(ctx context.Context) {

@@ -9,14 +9,14 @@ import (
 )
 
 func MpContractExpenses(doc *goquery.Document) ([]*dtos.ContractExpense, error) {
-	var contractExpenses []*dtos.ContractExpense
+	rows := doc.Find("tbody tr")
+	contractExpenses := make([]*dtos.ContractExpense, 0, rows.Length())
 	var parseErr error
 
-	doc.Find("tbody tr").Each(func(i int, row *goquery.Selection) {
+	rows.Each(func(i int, row *goquery.Selection) {
 		contractExpense := &dtos.ContractExpense{}
 		row.Find("td").Each(func(j int, cell *goquery.Selection) {
 			text := strings.TrimSpace(cell.Text())
-
 			switch j {
 			case 0:
 				contractExpense.Supplier = format.Supplier(text)
@@ -28,7 +28,7 @@ func MpContractExpenses(doc *goquery.Document) ([]*dtos.ContractExpense, error) 
 				expense, err := format.ExpenseToFloat(text)
 				if err != nil {
 					parseErr = err
-					break
+					return
 				}
 				contractExpense.Total = expense
 			}

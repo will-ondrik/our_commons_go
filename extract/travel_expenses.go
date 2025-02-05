@@ -11,14 +11,15 @@ import (
 
 func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 	fmt.Println("Extracting travel expenses...")
-	var mpTravelExpenses []*dtos.TravelExpense
-	var parseErr error
-
 	rows := doc.Find("tbody tr")
-	for i := 0; i < rows.Length(); i++ {
+	mpTravelExpenses := make([]*dtos.TravelExpense, 0, rows.Length())
+	var parseErr error
+	nRows := rows.Length()
+
+	for i := 0; i < nRows; i++ {
 		row := rows.Eq(i)
 
-		// Process the visible row
+		// Process only rows with the main expense info.
 		if row.HasClass("expenses-main-info") {
 			travelExpense := &dtos.TravelExpense{}
 			row.Find("td").Each(func(j int, cell *goquery.Selection) {
@@ -80,8 +81,8 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 				}
 			})
 
-			// Check for the hidden row
-			if i+1 < rows.Length() {
+			// Process hidden travel log data if available.
+			if i+1 < nRows {
 				hiddenRow := rows.Eq(i + 1)
 				if hiddenRow.Find("table").Length() > 0 {
 					hiddenRow.Find("table tbody tr").Each(func(k int, nestedRow *goquery.Selection) {
@@ -90,7 +91,6 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 
 						nestedRow.Find("td").Each(func(l int, cell *goquery.Selection) {
 							text := strings.TrimSpace(cell.Text())
-							// Case for transportation without flights
 							if numCols == 4 {
 								switch l {
 								case 0:
@@ -105,8 +105,6 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 									traveller.DestinationCity = formattedCity
 								}
 								traveller.Date = "Not Provided"
-
-								// Normal case
 							} else {
 								switch l {
 								case 0:
@@ -124,9 +122,9 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 								}
 							}
 						})
-
 						travelExpense.TravelLogs = append(travelExpense.TravelLogs, traveller)
 					})
+					// Skip the hidden row since it has been processed.
 					i++
 				}
 			}

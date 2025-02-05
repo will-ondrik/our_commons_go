@@ -10,11 +10,12 @@ import (
 )
 
 func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, error) {
-	var hospitalityExpenses []*dtos.HospitalityExpense
+	rows := doc.Find("tbody tr")
+	hospitalityExpenses := make([]*dtos.HospitalityExpense, 0, rows.Length())
 	var parseErr error
 
-	rows := doc.Find("tbody tr")
-	for i := 0; i < rows.Length(); i++ {
+	nRows := rows.Length()
+	for i := 0; i < nRows; i++ {
 		row := rows.Eq(i)
 
 		if !row.HasClass("expenses-main-info") {
@@ -48,38 +49,39 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 			}
 		})
 
-		// Process hidden data
-		hiddenRow := rows.Eq(i + 1)
+		// Process hidden data in the next row
+		if i+1 < nRows {
+			hiddenRow := rows.Eq(i + 1)
+			// Retrieve Event type
+			eventType := hiddenRow.Find(".col-md-4").Text()
+			hospitalityExpense.Event.Type = format.EventType(eventType)
 
-		// Retrieve Event type
-		eventType := hiddenRow.Find(".col-md-4").Text()
-		hospitalityExpense.Event.Type = format.EventType(eventType)
-
-		var expenseLogs []dtos.ExpenseLogs
-		hiddenRow.Find("table tbody tr").Each(func(k int, nestedRow *goquery.Selection) {
-			var expenseEntry dtos.ExpenseLogs
-			nestedRow.Find("td").Each(func(l int, cell *goquery.Selection) {
-				text := strings.TrimSpace(cell.Text())
-				switch l {
-				case 0:
-					expenseEntry.Claim = text
-				case 1:
-					expenseEntry.Supplier = text
-				case 2:
-					expense, err := format.ExpenseToFloat(text)
-					if err != nil {
-						parseErr = err
-						return
+			var expenseLogs []dtos.ExpenseLogs
+			hiddenRow.Find("table tbody tr").Each(func(k int, nestedRow *goquery.Selection) {
+				var expenseEntry dtos.ExpenseLogs
+				nestedRow.Find("td").Each(func(l int, cell *goquery.Selection) {
+					text := strings.TrimSpace(cell.Text())
+					switch l {
+					case 0:
+						expenseEntry.Claim = text
+					case 1:
+						expenseEntry.Supplier = text
+					case 2:
+						expense, err := format.ExpenseToFloat(text)
+						if err != nil {
+							parseErr = err
+							return
+						}
+						expenseEntry.Cost = expense
 					}
-					expenseEntry.Cost = expense
+				})
+				// Only add valid entries.
+				if expenseEntry.Claim != "" && expenseEntry.Cost != 0 && expenseEntry.Supplier != "" {
+					expenseLogs = append(expenseLogs, expenseEntry)
 				}
 			})
-			if expenseEntry.Claim == "" || expenseEntry.Cost == 0 || expenseEntry.Supplier == "" {
-				return
-			}
-			expenseLogs = append(expenseLogs, expenseEntry)
-		})
-		hospitalityExpense.Event.ExpenseLogs = expenseLogs
+			hospitalityExpense.Event.ExpenseLogs = expenseLogs
+		}
 		hospitalityExpenses = append(hospitalityExpenses, hospitalityExpense)
 	}
 	return hospitalityExpenses, parseErr

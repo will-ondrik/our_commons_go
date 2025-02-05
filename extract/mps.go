@@ -16,10 +16,8 @@ func Mps(doc *goquery.Document) ([]*dtos.MpWithExpenseCategories, error) {
 
 	dataTable := doc.Find("#data-table")
 	dataTable.Find("tbody tr").Each(func(i int, row *goquery.Selection) {
-
 		mp := &dtos.MpWithExpenseCategories{}
 		row.Find("td").Each(func(j int, cell *goquery.Selection) {
-
 			text := strings.TrimSpace(cell.Text())
 			switch j {
 			case 0:
@@ -78,7 +76,6 @@ func Mps(doc *goquery.Document) ([]*dtos.MpWithExpenseCategories, error) {
 				mp.ContractExpenses.Href = href
 			default:
 				fmt.Println("Unexpected column")
-
 			}
 		})
 

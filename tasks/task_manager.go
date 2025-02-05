@@ -102,16 +102,16 @@ func (tm *TaskManager) PollForReports() (dtos.AllExpenditureReports, error) {
 }
 
 // Process MP's expenses concurrently
-// TODO: Return an empty slice if no URL exists
-// TODO: Return slice
-// TODO: Send returned slice to Kafka for processing
-func (tm *TaskManager) ProcessMp(mp *dtos.MpWithExpenseCategories) {
+// Revised to accept the rateLimiter so that each expense extraction
+// waits for its own rate token before calling RunTask.
+func (tm *TaskManager) ProcessMp(mp *dtos.MpWithExpenseCategories, rateLimiter <-chan time.Time) {
 	var wg sync.WaitGroup
 
 	if mp.ContractExpenses.Href != "" {
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
+			<-rateLimiter
 			_, err := tm.ContractExpenses(url)
 			if err != nil {
 				fmt.Println("[ERROR] Contract Expenses:", err)
@@ -125,6 +125,7 @@ func (tm *TaskManager) ProcessMp(mp *dtos.MpWithExpenseCategories) {
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
+			<-rateLimiter
 			_, err := tm.HospitalityExpenses(url)
 			if err != nil {
 				fmt.Println("[ERROR] Hospitality Expenses:", err)
@@ -138,6 +139,7 @@ func (tm *TaskManager) ProcessMp(mp *dtos.MpWithExpenseCategories) {
 		wg.Add(1)
 		go func(url string) {
 			defer wg.Done()
+			<-rateLimiter
 			_, err := tm.TravelExpenses(url)
 			if err != nil {
 				fmt.Println("[ERROR] Travel Expenses:", err)
@@ -150,13 +152,12 @@ func (tm *TaskManager) ProcessMp(mp *dtos.MpWithExpenseCategories) {
 	wg.Wait()
 }
 
-// Worker pool to process MPs
-// TODO: Test rate limited and worker pool
-// Check if its possible to increase size
+// Worker pool to process MPs.
+// Revised to remove the per-MP rate limit here since individual expense extractions
+// are now rate limited within ProcessMp.
 func (tm *TaskManager) ProcessMpQueue(mpQueue chan *dtos.MpWithExpenseCategories, wg *sync.WaitGroup, rateLimiter <-chan time.Time) {
 	for mp := range mpQueue {
-		<-rateLimiter
-		tm.ProcessMp(mp)
+		tm.ProcessMp(mp, rateLimiter)
 	}
 	wg.Done()
 }

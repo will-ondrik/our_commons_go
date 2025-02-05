@@ -1,14 +1,10 @@
 package extract
 
 import (
-	//"etl_our_commons/browser"
 	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"fmt"
-
 	"strings"
-
-	//"sync"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -70,7 +66,6 @@ func ReportYears(dateRange dtos.DateRange) dtos.DateRange {
 		StartDate: splitStart[1],
 		EndDate:   splitEnd[1],
 	}
-
 }
 
 /*
