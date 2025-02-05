@@ -30,12 +30,12 @@ func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
 	//doc, err := b.GetHtml(ctx, task)
 	doc, err := b.GetHtml2(ctx, task)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to extract html: %v", err)
+		return nil, fmt.Errorf("Failed to extract html: %v\n", err)
 	}
 
 	formattedData, err := b.GetData(task.Type, doc)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to format data for task: %s", task.Type)
+		return nil, fmt.Errorf("Failed to format data for task: %s\n", task.Type)
 	}
 
 	return formattedData, nil
@@ -130,7 +130,7 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 	for attempts < max_attempts {
 		ctx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		fmt.Printf("Attempt %d...", attempts)
+		fmt.Println("[ATTEMPT: %d]...", attempts)
 		attempts++
 
 		var err error
@@ -149,32 +149,35 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 		}
 
 		if err != nil {
-			log.Println("Chrome instance failed")
+			fmt.Println("[CHROME INSTANCE FAILED] Retrying...")
 			b.CancelInstance(ctx)
 			continue
 		}
 
 		if html == "" {
-			log.Println("HTML empty. Retrying...")
+			fmt.Println("[EMPTY HTML] Retrying...")
 			b.CancelInstance(ctx)
-
 			continue
 		}
 		if b.IsErrorPage(html) {
-			log.Println("Rate limited. Sleeping...")
+			fmt.Println("[RATE LIMITED] Sleeping...")
 			b.CancelInstance(ctx)
 			time.Sleep(2 * time.Second)
-			log.Println("Sleep period over.")
+			fmt.Println("[SLEEP OVER] Retrying...")
 			continue
 		}
 
 		if html != "" {
-			log.Println("Valid HTML found. Exiting...")
+			fmt.Println("[HTML FOUND] Done!")
 			b.CancelInstance(ctx)
-
 			break
 		}
 
+	}
+
+	if html == "" || attempts == 4 {
+		fmt.Println("[FAILED TASK]")
+		return nil, fmt.Errorf("all attempts exhausted. task failed.\n")
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
