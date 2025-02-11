@@ -19,16 +19,15 @@ type Browser struct {
 }
 
 func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
-	fmt.Println("[RUNNING TASK]: ", task.Type)
-	fmt.Println("[VISTING URL]: ", task.Url)
+	fmt.Printf("[RUNNING TASK]: %s\n", task.Type)
+	fmt.Printf("[VISTING URL]: %s\n", task.Url)
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), constants.CHROME_OPTIONS...)
 	defer cancel()
 
 	ctx, cancelCtx := chromedp.NewContext(allocCtx)
 	defer cancelCtx()
 
-	//doc, err := b.GetHtml(ctx, task)
-	doc, err := b.GetHtml2(ctx, task)
+	doc, err := b.GetHtml(ctx, task)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to extract html: %v\n", err)
 	}
@@ -39,6 +38,22 @@ func (b *Browser) RunTask(task dtos.Task) (interface{}, error) {
 	}
 
 	return formattedData, nil
+}
+
+func (b *Browser) RunTask2(task dtos.Task) (*goquery.Document, error) {
+	fmt.Printf("[RUNNING TASK]: %s\n", task.Type)
+	fmt.Printf("[VISTING URL]: %s\n", task.Url)
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), constants.CHROME_OPTIONS...)
+	defer cancel()
+
+	ctx, cancelCtx := chromedp.NewContext(allocCtx)
+	defer cancelCtx()
+
+	if doc, err := b.GetHtml(ctx, task); err != nil {
+		return nil, fmt.Errorf("Failed to extract html: %v\n", err)
+	} else {
+		return doc, nil
+	}
 }
 
 func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, error) {
@@ -88,40 +103,7 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 	return output, nil
 }
 
-// TODO: Need to handle timeouts or error page
-// Re-run function if either occur
 func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
-	var html string
-	fmt.Println("Looking for html element...")
-
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(task.Url),
-		chromedp.WaitVisible(task.ExtractFromElement),
-		chromedp.OuterHTML(task.ExtractFromElement, &html),
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("Chrome instance failed: %v", err)
-	}
-
-	if html != "" {
-		fmt.Println("html found")
-
-	}
-	err = chromedp.Cancel(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to close Chrome instance: %v", err)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-	if err != nil {
-		return nil, fmt.Errorf("Unable to parse html: %v", err)
-	}
-	fmt.Println("Returning doc...")
-	return doc, nil
-}
-
-func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
 	var html string
 
 	attempts := 0
@@ -130,7 +112,7 @@ func (b *Browser) GetHtml2(ctx context.Context, task dtos.Task) (*goquery.Docume
 	for attempts < max_attempts {
 		ctx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
-		fmt.Println("[ATTEMPT: %d]...", attempts)
+		fmt.Printf("\n[ATTEMPT: %d]...\n", attempts)
 		attempts++
 
 		var err error
