@@ -2,6 +2,7 @@ package main
 
 import (
 	"etl_our_commons/browser"
+	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"etl_our_commons/processing"
 	"etl_our_commons/tasks"
@@ -17,8 +18,8 @@ Runtimes
 */
 
 // Worker and Rate Limits
-const WorkerLimit = 4
-const RequestsPerSecond = 2
+const WorkerLimit = constants.WORKER_LIMIT
+const RequestsPerSecond = constants.REQUESTS_PER_SECOND
 
 func main() {
 	startTime := time.Now()
@@ -31,6 +32,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// TODO: Only process new reports
+	// Check DB for list of reports before processing
+
 
 	var htmlStore []*dtos.MpHtml
 	var redoTaskQueue []*dtos.RedoTask
@@ -62,11 +67,10 @@ func main() {
 		}
 
 		for _, mp := range mps {
+
 			// Send MPs to pool
-			fmt.Printf("expenditure report details: %+v\n", report)
 			mp.Year = report.Years
 			mp.Quarter = report.Quarter
-			fmt.Printf("Adding to queue: %+v\n", mp)
 			mpQueue <- mp
 		}
 	}
@@ -80,22 +84,19 @@ func main() {
 	fmt.Println("\nHandling failed tasks...")
 	tm.ProcessRedoTasks(redoTaskQueue, &htmlStore)
 
-	for _, html := range htmlStore {
-		fmt.Println(html)
-	}
+	// Process extracted HTML for Mps
 	fmt.Println("\nProcessing html store...")
 	mps := processing.ProcessData(htmlStore)
 	for _, mp := range mps {
 		fmt.Println("-----------------------------------")
 		fmt.Printf("MP Info: %+v\n", mp)
 		fmt.Println("-----------------------------------")
+
+
+		// TODO: Save items to db
+
 		
 	}
-
-
-	// Save items to db
-
-
 }
 
 func getRuntime(elapsed time.Time) {
