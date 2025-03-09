@@ -72,6 +72,8 @@ func ProcessData(mpHtml []*dtos.MpHtml) []*dtos.Mp {
 		mp.Expenses.Totals.ContractCost = html.Info.ContractExpenses.ExpenseTotal
 		mp.Expenses.Totals.HospitalityCost = html.Info.HospitalityExpenses.ExpenseTotal
 		mp.Expenses.Totals.TravelCost = html.Info.TravelExpenses.ExpenseTotal
+		mp.Year = html.Info.Year
+		mp.FiscalQuarter = html.Info.Quarter
 
 		if html.Contract != nil {
 			wg.Add(1)
