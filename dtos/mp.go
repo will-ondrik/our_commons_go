@@ -29,7 +29,7 @@ type Mp struct {
 	MpName        Name
 	Constituency  string
 	Caucus        string
-	Year          string
+	Year          DateRange
 	FiscalQuarter int
 	Expenses      Expenses
 }
