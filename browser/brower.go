@@ -106,17 +106,17 @@ func (b *Browser) GetData(taskType string, doc *goquery.Document) (interface{}, 
 func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Document, error) {
 	var html string
 
-	attempts := 0
-	max_attempts := 5
+	attempts := constants.ATTEMPTS
+	max_attempts := constants.MAX_ATTEMPTS
 
-	for attempts < max_attempts {
+	for attempts <= max_attempts {
 		ctx, cancel := chromedp.NewContext(ctx)
 		defer cancel()
 		fmt.Printf("\n[ATTEMPT: %d]...\n", attempts)
 		attempts++
 
 		var err error
-		if task.ExtractFromElement == "body" {
+		if task.ExtractFromElement == constants.HTML_BODY {
 			err = chromedp.Run(ctx,
 				chromedp.Navigate(task.Url),
 				chromedp.WaitReady(task.ExtractFromElement),
@@ -136,7 +136,7 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 			continue
 		}
 
-		if html == "" {
+		if html == constants.EMPTY_STR {
 			fmt.Println("[EMPTY HTML] Retrying...")
 			b.CancelInstance(ctx)
 			continue
@@ -149,7 +149,7 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 			continue
 		}
 
-		if html != "" {
+		if html != constants.EMPTY_STR {
 			fmt.Println("[HTML FOUND] Done!")
 			b.CancelInstance(ctx)
 			break
@@ -157,7 +157,7 @@ func (b *Browser) GetHtml(ctx context.Context, task dtos.Task) (*goquery.Documen
 
 	}
 
-	if html == "" || attempts == 4 {
+	if html == constants.EMPTY_STR || attempts == max_attempts {
 		fmt.Println("[FAILED TASK]")
 		return nil, fmt.Errorf("all attempts exhausted. task failed.\n")
 	}
