@@ -62,9 +62,11 @@ func main() {
 		}
 
 		for _, mp := range mps {
+			// Send MPs to pool
+			fmt.Printf("expenditure report details: %+v\n", report)
 			mp.Year = report.Years
 			mp.Quarter = report.Quarter
-			// Send MPs to pool
+			fmt.Printf("Adding to queue: %+v\n", mp)
 			mpQueue <- mp
 		}
 	}
@@ -87,7 +89,12 @@ func main() {
 		fmt.Println("-----------------------------------")
 		fmt.Printf("MP Info: %+v\n", mp)
 		fmt.Println("-----------------------------------")
+		
 	}
+
+
+	// Save items to db
+
 
 }
 
