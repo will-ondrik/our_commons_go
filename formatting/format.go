@@ -81,6 +81,10 @@ func FlightPointsToFloat(flightPoints string) (float64, error) {
 func TravellerName(name string) dtos.Name {
 	name = strings.TrimSpace(name)
 
+	// TODO: Filter out "Right Hon." and "Hon."
+	name = strings.ReplaceAll(name, "Right Hon. ", "")
+	name = strings.ReplaceAll(name, "Hon. ", "")
+
 	if strings.Contains(name, "Not Listed") || name == "" {
 		return dtos.Name{
 			FirstName: "Not Listed",
