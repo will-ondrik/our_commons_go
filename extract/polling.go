@@ -23,7 +23,12 @@ func ExpenditureReports(doc *goquery.Document) dtos.AllExpenditureReports {
 					if err != nil {
 						fmt.Println(err)
 					}
-					dateRange := ReportDates(text)
+					dateRange, err := ReportDates(text)
+					if err != nil {
+						panic(err)
+					}
+
+					fmt.Println("Date range:", dateRange)
 					yearRange := ReportYears(dateRange)
 
 					cell.Find("a").Each(func(j int, link *goquery.Selection) {
