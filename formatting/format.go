@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -51,22 +52,30 @@ func ExpenseToFloat(expenseTotal string) (float64, error) {
 	return expenseFloat, nil
 }
 
-func StringToDateRange(dateStr string) dtos.DateRange {
+func StringToDateRange(dateStr string) (dtos.DateRange, error) {
 	dateStr = strings.TrimSpace(dateStr)
 
 	if dateStr == "" {
 		return dtos.DateRange{
 			StartDate: "Not Provided",
 			EndDate:   "Not Provided",
-		}
+		}, nil
 	}
 
 	dateArr := strings.Split(dateStr, " ")
-
-	return dtos.DateRange{
+	dateRange := dtos.DateRange{
 		StartDate: dateArr[1],
-		EndDate:   dateArr[3],
+		EndDate: dateArr[3],
 	}
+
+	formattedDateRange, err := ConvertDateFormat(dateRange)
+	if err != nil {
+		return dateRange, nil
+	}
+
+	fmt.Println("Formatted date:", formattedDateRange)
+
+	return formattedDateRange, nil
 }
 
 func FlightPointsToFloat(flightPoints string) (float64, error) {
@@ -124,4 +133,30 @@ func EventType(text string) string {
 	trimmed := strings.TrimSpace(removeClaim)
 
 	return trimmed
+}
+
+// Convert date string into PSQL format
+func ConvertDateFormat(dateRange dtos.DateRange) (dtos.DateRange, error) {
+
+	fmt.Println("Convert date input:", dateRange)
+	// Must use same date structure in the new format
+	// This ensures that the input format can be formatted correctly
+	const inputFormat = "January 2, 2006"
+	const newFormat = "2006-01-02"
+
+	formattedStartDate, err := time.Parse(inputFormat, dateRange.StartDate)
+	if err != nil {
+		return dtos.DateRange{}, err
+	}
+
+	formattedEndDate, err := time.Parse(inputFormat, dateRange.EndDate)
+	if err != nil {
+		return dtos.DateRange{}, err
+	}
+
+	fmt.Println("New start:", formattedStartDate, "New end:", formattedEndDate)
+	return dtos.DateRange{
+		StartDate: formattedStartDate.Format(newFormat),
+		EndDate: formattedEndDate.Format(newFormat),
+	}, nil
 }
