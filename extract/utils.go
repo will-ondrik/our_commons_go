@@ -4,6 +4,7 @@ import (
 	//"etl_our_commons/browser"
 	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
+	format "etl_our_commons/formatting"
 	"fmt"
 
 	"strings"
@@ -44,7 +45,7 @@ func FiscalQuarter(text string) (int, error) {
 	return quarter, parseErr
 }
 
-func ReportDates(text string) dtos.DateRange {
+func ReportDates(text string) (dtos.DateRange, error) {
 	splitText := strings.Split(text, "\n")
 	tt := strings.Split(splitText[0], " – ")
 	dateRangeStr := tt[1]
@@ -56,19 +57,21 @@ func ReportDates(text string) dtos.DateRange {
 		EndDate:   dates[1],
 	}
 
-	return dateRange
+	formattedDateRange, err := format.ConvertDateFormat(dateRange)
+	if err != nil {
+		return dtos.DateRange{}, err
+	}
+
+	return formattedDateRange, nil
 }
 
 func ReportYears(dateRange dtos.DateRange) dtos.DateRange {
-	startYearStr := dateRange.StartDate
-	splitStart := strings.Split(startYearStr, ", ")
-
-	endYearStr := dateRange.EndDate
-	splitEnd := strings.Split(endYearStr, ", ")
+	startDateSplit := strings.Split(dateRange.StartDate, "-")
+	endDateSplit := strings.Split(dateRange.EndDate, "-")
 
 	return dtos.DateRange{
-		StartDate: splitStart[1],
-		EndDate:   splitEnd[1],
+		StartDate: startDateSplit[0],
+		EndDate:   endDateSplit[0],
 	}
 
 }
