@@ -27,7 +27,12 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 				case 0:
 					travelExpense.Claim = text
 				case 1:
-					travelExpense.Dates = format.StringToDateRange(text)
+					dates, err := format.StringToDateRange(text)
+					if err != nil {
+						parseErr = err
+						return
+					}
+					travelExpense.Dates = dates
 				case 2:
 					transportationCosts, err := format.ExpenseToFloat(text)
 					if err != nil {
