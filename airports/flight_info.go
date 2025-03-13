@@ -1,4 +1,4 @@
-package airpoirts
+package airports
 
 import (
 	"encoding/json"
@@ -7,9 +7,8 @@ import (
 	"os"
 )
 
-type AirportsList struct {
-	Airports map[string]AirportData `json:"-"`
-}
+type AirportsList map[string]AirportData
+
 
 type AirportData struct {
 	ICOA string `json:"icao"`
@@ -24,9 +23,15 @@ type AirportData struct {
 	Timezone string `json:"tz"`
 }
 
+type Trip struct {
+	DepartureAirport AirportData
+	DestinationAirport AirportData
+}
 
-func parseAirportsFile() (*AirportsList, error) {
-	file, err := os.Open("./airports.json")
+
+
+func ParseAirportsFile() (*AirportsList, error) {
+	file, err := os.Open("./airports/airports.json")
 	if err != nil {
 		log.Fatal("failed to open airports.json")
 	}
@@ -37,12 +42,37 @@ func parseAirportsFile() (*AirportsList, error) {
 		log.Fatal("failed to read file")
 	}
 
+
 	var airports *AirportsList
 	err = json.Unmarshal(bytes, &airports)
 	if err != nil {
 		log.Fatal("failed to unmarshal airport list")
 	}
-
+	
 	return airports, nil
+}
+
+// TODO: Remove hardcoded country code
+func GetAirportDetails(departureCity, destinationCity string) (Trip, error) {
+	airportsList, err := ParseAirportsFile()
+	if err != nil {
+		return Trip{}, err
+	}
+
+	trip := Trip{}
+	for _, airport := range *airportsList {
+		if airport.City == departureCity && airport.Country == "CA" {
+			trip.DepartureAirport = airport
+		}
+
+		if airport.City == destinationCity && airport.Country == "CA" {
+			trip.DestinationAirport = airport
+		}
+
+		if trip.DepartureAirport != (AirportData{}) && trip.DestinationAirport != (AirportData{}) {
+
+		}
+	}
+	return trip, nil
 }
 
