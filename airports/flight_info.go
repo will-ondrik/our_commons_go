@@ -28,9 +28,28 @@ type Trip struct {
 	DestinationAirport AirportData
 }
 
+type AirportCache map[string]AirportData
+
+type AirportDetails struct {
+	DetailsMap AirportsList
+	Cache AirportCache
+}
 
 
-func ParseAirportsFile() (*AirportsList, error) {
+func NewAirportDetails() (*AirportDetails, error) {
+	airportsMap, err := ParseAirportsFile()
+	if err != nil {
+		return nil, err
+	}
+
+	return &AirportDetails{
+		DetailsMap: airportsMap,
+		Cache: make(map[string]AirportData),
+	}, nil
+}
+
+
+func ParseAirportsFile() (AirportsList, error) {
 	file, err := os.Open("./airports/airports.json")
 	if err != nil {
 		log.Fatal("failed to open airports.json")
@@ -43,7 +62,7 @@ func ParseAirportsFile() (*AirportsList, error) {
 	}
 
 
-	var airports *AirportsList
+	var airports AirportsList
 	err = json.Unmarshal(bytes, &airports)
 	if err != nil {
 		log.Fatal("failed to unmarshal airport list")
@@ -52,15 +71,17 @@ func ParseAirportsFile() (*AirportsList, error) {
 	return airports, nil
 }
 
+
+
 // TODO: Remove hardcoded country code
-func GetAirportDetails(departureCity, destinationCity string) (Trip, error) {
+func (a *AirportDetails) GetAirportDetails(departureCity, destinationCity string) (Trip, error) {
 	airportsList, err := ParseAirportsFile()
 	if err != nil {
 		return Trip{}, err
 	}
 
 	trip := Trip{}
-	for _, airport := range *airportsList {
+	for _, airport := range airportsList {
 		if airport.City == departureCity && airport.Country == "CA" {
 			trip.DepartureAirport = airport
 		}
@@ -75,4 +96,22 @@ func GetAirportDetails(departureCity, destinationCity string) (Trip, error) {
 	}
 	return trip, nil
 }
+
+// Expects DepartureCityCountry_DestinationCityCountry
+// Example: VancouverCanada_OttawaCanada
+func (a *AirportDetails) GetCache(cities string) *AirportData {
+	if data, ok := a.Cache[cities]; ok {
+		return &data
+	} else {
+		return nil
+	}
+}
+
+// Expects DepartureCityCountry_DestinationCityCountry
+// Example: VancouverCanada_OttawaCanada
+func (a *AirportDetails) SetCache (cities string, airportData AirportData) {
+	a.Cache[cities] = airportData
+}
+
+
 
