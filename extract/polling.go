@@ -29,7 +29,10 @@ func ExpenditureReports(doc *goquery.Document) dtos.AllExpenditureReports {
 					}
 
 					fmt.Println("Date range:", dateRange)
-					yearRange := ReportYears(dateRange)
+					year, err := ReportYear(dateRange)
+					if err != nil {
+						fmt.Printf("failed year conversion: %s", err)
+					}
 
 					cell.Find("a").Each(func(j int, link *goquery.Selection) {
 						href, exists := link.Attr("href")
@@ -39,9 +42,9 @@ func ExpenditureReports(doc *goquery.Document) dtos.AllExpenditureReports {
 						hrefLink := fmt.Sprintf("%s%s", constants.BASE_URL, href)
 
 						expenditureReport = dtos.ExpenditureReport{
-							Years:     yearRange,
+							FiscalYear:     year,
 							DateRange: dateRange,
-							Quarter:   quarter,
+							FiscalQuarter:   quarter,
 							Href:      hrefLink,
 						}
 					})
