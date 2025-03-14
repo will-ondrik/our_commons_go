@@ -9,8 +9,9 @@ type MpWithExpenseCategories struct {
 	TravelExpenses      Category  `json:"travelExpenses"`
 	HospitalityExpenses Category  `json:"hospitalityExpenses"`
 	ContractExpenses    Category  `json:"contractExpenses"`
-	Year                DateRange `json:"year"`
-	Quarter             int       `json:"quarter"`
+	Years                DateRange `json:"year"`
+	FiscalYear int `json:"fiscalYear"`
+	FiscalQuarter             int       `json:"quarter"`
 }
 
 type Category struct {
@@ -29,7 +30,8 @@ type Mp struct {
 	MpName        Name
 	Constituency  string
 	Caucus        string
-	Year          DateRange
+	Years      DateRange
+	FiscalYear int
 	FiscalQuarter int
 	Expenses      Expenses
 }
