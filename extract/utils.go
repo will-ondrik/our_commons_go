@@ -78,106 +78,21 @@ func ReportYear(dateRange dtos.DateRange) (int, error) {
 	return year, nil
 }
 
-/*
-func MpAllExpenses(mp *dtos.MpWithExpenseCategories, b *browser.Browser) dtos.MpExpensesResults {
-	var wg sync.WaitGroup
-
-	travelChan := make(chan []*dtos.TravelExpense, 1)
-	errChan := make(chan error, 3)
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		task := dtos.Task{
-			Type:               "extractTravelExpenses",
-			Url:                mp.TravelExpenses.Href,
-			ExtractFromElement: "#data-table",
-		}
-
-		travelExpenses, err := b.RunTask(task)
-		if err != nil {
-			errChan <- err
-			return
-		} else {
-			if travelExpenses, ok := travelExpenses.([]*dtos.TravelExpense); ok {
-				travelChan <- travelExpenses
-			} else {
-				errChan <- fmt.Errorf("type assertion failed for hospitality expenses")
-			}
-		}
-	}()
-
-	wg.Add(1)
-	hospitalityChan := make(chan []*dtos.HospitalityExpense, 1)
-	go func() {
-		defer wg.Done()
-
-		task := dtos.Task{
-			Type:               "extractHospitalityExpenses",
-			Url:                mp.HospitalityExpenses.Href,
-			ExtractFromElement: "#data-table",
-		}
-
-		hospitalityExpenses, err := b.RunTask(task)
-		if err != nil {
-			errChan <- err
-			return
-		} else {
-			if hospitalityExpenses, ok := hospitalityExpenses.([]*dtos.HospitalityExpense); ok {
-				hospitalityChan <- hospitalityExpenses
-			} else {
-				errChan <- fmt.Errorf("type assertion failed for hospitality expenses")
-			}
-		}
-	}()
-
-	wg.Add(1)
-	contractChan := make(chan []*dtos.ContractExpense, 1)
-	go func() {
-		defer wg.Done()
-
-		task := dtos.Task{
-			Type:               "extractContractExpenses",
-			Url:                mp.ContractExpenses.Href,
-			ExtractFromElement: "#data-table",
-		}
-
-		contractExpenses, err := b.RunTask(task)
-		if err != nil {
-			errChan <- err
-			return
-		} else {
-			contractExpenses, ok := contractExpenses.([]*dtos.ContractExpense)
-			if !ok {
-				errChan <- err
-			} else {
-				contractChan <- contractExpenses
-			}
-		}
-	}()
-
-	go func() {
-		wg.Wait()
-		close(travelChan)
-		close(hospitalityChan)
-		close(contractChan)
-		close(errChan)
-	}()
-
-	result := dtos.MpExpensesResults{}
-
-	for travel := range travelChan {
-		result.TravelExpenses = travel
+func IsFlight(travelPurpose string) bool {
+	if strings.Contains(travelPurpose, "travel") {
+		return true
 	}
-	for hospitality := range hospitalityChan {
-		result.HospitalityExpenses = hospitality
+
+	if strings.Contains(travelPurpose, "unite the family") {
+		return true
 	}
-	for contract := range contractChan {
-		result.ContractExpenses = contract
-	}
-	for err := range errChan {
-		result.Errors = append(result.Errors, err)
-	}
-	return result
-}*/
+
+	// to attend a national caucus meeting
+	// to attend a regional or provincial caucus meeting
+	// Attending event with Member (type: Employee)
+	// // Need to compare cost to ensure its a flight
+		// There may be multiple cities in close proximity
+	
+
+	return false
+}
