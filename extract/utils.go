@@ -6,6 +6,7 @@ import (
 	"etl_our_commons/dtos"
 	format "etl_our_commons/formatting"
 	"fmt"
+	"strconv"
 
 	"strings"
 
@@ -65,15 +66,16 @@ func ReportDates(text string) (dtos.DateRange, error) {
 	return formattedDateRange, nil
 }
 
-func ReportYears(dateRange dtos.DateRange) dtos.DateRange {
+func ReportYear(dateRange dtos.DateRange) (int, error) {
 	startDateSplit := strings.Split(dateRange.StartDate, "-")
-	endDateSplit := strings.Split(dateRange.EndDate, "-")
 
-	return dtos.DateRange{
-		StartDate: startDateSplit[0],
-		EndDate:   endDateSplit[0],
+	year, err := strconv.Atoi(startDateSplit[0])
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert year")
 	}
 
+	
+	return year, nil
 }
 
 /*
