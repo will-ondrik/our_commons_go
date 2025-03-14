@@ -70,9 +70,24 @@ func ParseAirportsFile() (AirportsList, error) {
 	
 	return airports, nil
 }
+/*
+func (a *AirportDetails) GetFlightData(departureCity, destinationCity string) ( ,error) {
+
+	// Check cache, if present, then return
+	airportData := a.getCache(departureCity + "_" + destinationCity)
+	if airportData != nil {
+		
+	}
 
 
+	tripAirports, err := a.GetAirportDetails(departureCity, destinationCity)
+	if err != nil {
+		return nil, err
+	}
 
+
+}
+*/
 // TODO: Remove hardcoded country code
 func (a *AirportDetails) GetAirportDetails(departureCity, destinationCity string) (Trip, error) {
 	airportsList, err := ParseAirportsFile()
