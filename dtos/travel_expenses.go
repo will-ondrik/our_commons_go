@@ -19,3 +19,9 @@ type FlightPoints struct {
 	Special float64 `json:"special"`
 	USA     float64 `json:"usa"`
 }
+type TravelData struct {
+	Distance float64
+	DistanceUnit string
+	Emissions float64
+	EmissionsUnit string
+}
