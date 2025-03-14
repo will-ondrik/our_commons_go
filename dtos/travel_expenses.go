@@ -9,7 +9,6 @@ type TravelExpense struct {
 	FlightPoints FlightPoints `json:"flightPoints"`
 }
 type TravelCosts struct {
-	TravelData []TravelData
 	Transportation      float64 `json:"transportation"`
 	Accomodation        float64 `json:"accomodation"`
 	MealsAndIncidentals float64 `json:"mealsAndIncidentals"`
