@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	format "etl_our_commons/formatting"
 	"fmt"
@@ -109,6 +110,7 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 									traveller.DepartureCity = formattedCity
 									traveller.DestinationCity = formattedCity
 								}
+								traveller.TransportationMode = constants.GROUND_TRANSPORTATION
 								traveller.Date = "Not Provided"
 
 								// Normal case
@@ -127,6 +129,7 @@ func MpTravelExpenses(doc *goquery.Document) ([]*dtos.TravelExpense, error) {
 								case 5:
 									traveller.DestinationCity = text
 								}
+
 							}
 						})
 
