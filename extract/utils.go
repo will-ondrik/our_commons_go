@@ -77,22 +77,3 @@ func ReportYear(dateRange dtos.DateRange) (int, error) {
 	
 	return year, nil
 }
-
-func IsFlight(travelPurpose string) bool {
-	if strings.Contains(travelPurpose, "travel") {
-		return true
-	}
-
-	if strings.Contains(travelPurpose, "unite the family") {
-		return true
-	}
-
-	// to attend a national caucus meeting
-	// to attend a regional or provincial caucus meeting
-	// Attending event with Member (type: Employee)
-	// // Need to compare cost to ensure its a flight
-		// There may be multiple cities in close proximity
-	
-
-	return false
-}
