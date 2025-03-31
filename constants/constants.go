@@ -27,10 +27,10 @@ var (
 		"unite the family",
 		"to attend a national caucus meeting",
 		"to attend a regional or provincial caucus meeting",
-		"attending event with member",
+		"to attend meetings with stakeholders about business of the House",
+		"to attend a conference",
+		"to attend training",
 		"travel to/from constituency and Ottawa",
-		
-
 	}
 )
 
@@ -40,10 +40,13 @@ const (
 	HOSPITALITY = "Hospitality"
 	CONTRACT    = "Contract"
 
-
 	// Transporation modes
-	GROUND_TRANSPORTATION   = "car"
-	AIR_TRANSPORTATION = "plane"
+	GROUND_TRANSPORTATION   = "Car"
+	AIR_TRANSPORTATION = "Plane"
+
+	// Emissions Units
+	// Always in Kilograms
+	KILOGRAMS = "kg"
 
 	// Base URL
 	BASE_URL = "https://www.ourcommons.ca"
