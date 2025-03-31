@@ -9411,7 +9411,7 @@
     "city": "Winnipeg",
     "country": "CA",
     "elevation": 760,
-    "iata": "YAV",
+    "iata": "",
     "icao": "CYAV",
     "lat": 50.0564002991,
     "lon": -97.0325012207,
@@ -11976,7 +11976,7 @@
     "tz": "America/Regina"
   },
   "CYQS": {
-    "city": "St Thomas",
+    "city": "St. Thomas",
     "country": "CA",
     "elevation": 778,
     "iata": "YQS",
@@ -12168,7 +12168,7 @@
     "tz": "America/Toronto"
   },
   "CYRQ": {
-    "city": "Trois-Rivieres",
+    "city": "Trois-Rivières",
     "country": "CA",
     "elevation": 199,
     "iata": "YRQ",
@@ -12232,7 +12232,7 @@
     "country": "CA",
     "elevation": 1141,
     "iata": "YSB",
-    "icao": "CYSB",
+    "icao": "",
     "lat": 46.625,
     "lon": -80.7988967896,
     "name": "Sudbury Airport",
@@ -12348,7 +12348,7 @@
     "tz": "America/Edmonton"
   },
   "CYSN": {
-    "city": "St Catharines",
+    "city": "St. Catharines",
     "country": "CA",
     "elevation": 321,
     "iata": "YCM",
@@ -12960,7 +12960,7 @@
     "tz": "America/Edmonton"
   },
   "CYXJ": {
-    "city": "Fort St.John",
+    "city": "Fort St. John",
     "country": "CA",
     "elevation": 2280,
     "iata": "YXJ",
@@ -13464,7 +13464,7 @@
     "tz": "America/Edmonton"
   },
   "CYZV": {
-    "city": "Sept-Iles",
+    "city": "Sept-Îles",
     "country": "CA",
     "elevation": 180,
     "iata": "YZV",
