@@ -31,7 +31,7 @@ func ExpenditureReports(doc *goquery.Document) dtos.AllExpenditureReports {
 					fmt.Println("Date range:", dateRange)
 					year, err := ReportYear(dateRange)
 					if err != nil {
-						fmt.Printf("failed year conversion: %s", err)
+						fmt.Println("Error converting date range to year")
 					}
 
 					cell.Find("a").Each(func(j int, link *goquery.Selection) {
