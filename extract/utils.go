@@ -6,6 +6,8 @@ import (
 	"etl_our_commons/dtos"
 	format "etl_our_commons/formatting"
 	"fmt"
+	"os"
+	"slices"
 	"strconv"
 
 	"strings"
@@ -48,10 +50,22 @@ func FiscalQuarter(text string) (int, error) {
 
 func ReportDates(text string) (dtos.DateRange, error) {
 	splitText := strings.Split(text, "\n")
+	if len(splitText) == 0 {
+		return dtos.DateRange{}, fmt.Errorf("invalid text format: no lines found")
+	}
+	
 	tt := strings.Split(splitText[0], " – ")
+	if len(tt) < 2 {
+		return dtos.DateRange{}, fmt.Errorf("invalid text format: missing date range separator")
+	}
+	
 	dateRangeStr := tt[1]
 	dateRangeStr = strings.ReplaceAll(dateRangeStr, "From ", "")
 	dates := strings.Split(dateRangeStr, " to ")
+	
+	if len(dates) < 2 {
+		return dtos.DateRange{}, fmt.Errorf("invalid date range format: missing 'to' separator")
+	}
 
 	dateRange := dtos.DateRange{
 		StartDate: dates[0],
@@ -67,13 +81,79 @@ func ReportDates(text string) (dtos.DateRange, error) {
 }
 
 func ReportYear(dateRange dtos.DateRange) (int, error) {
+	// Handle empty date
+	if dateRange.StartDate == "" {
+		return 0, fmt.Errorf("empty date string")
+	}
+	
 	startDateSplit := strings.Split(dateRange.StartDate, "-")
-
-	year, err := strconv.Atoi(startDateSplit[0])
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert year")
+	
+	if len(startDateSplit) == 0 {
+		return 0, fmt.Errorf("invalid date format: missing year")
+	}
+	
+	// Handle empty year part
+	yearStr := strings.TrimSpace(startDateSplit[0])
+	if yearStr == "" {
+		return 0, fmt.Errorf("empty year part in date")
 	}
 
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to convert year: %v", err)
+	}
 	
 	return year, nil
+}
+
+
+
+func IsFlight(travelPurpose string) bool {
+	// Handle empty strings
+	if travelPurpose == "" {
+		return false
+	}
+
+	travelPurpose = strings.ToLower(travelPurpose)
+
+	// to attend a national caucus meeting
+	// to attend a regional or provincial caucus meeting
+	// Attending event with Member (type: Employee)
+	// // Need to compare cost to ensure its a flight
+		// There may be multiple cities in close proximity
+	// unite the family with the Member
+	// travel to/from constituency and Ottawa
+
+	// Potentials:
+		// to attend training
+		// to attend meetings with stakeholders about business of the House
+		// to support a parliamentary association
+		// to attend language training
+		//
+
+	return slices.Contains(constants.FLIGHT_KEYWORDS, travelPurpose)
+}
+
+func WriteFlightErrorsToFile(errorMsgs []string) error {
+	if len(errorMsgs) == 0 {
+		fmt.Println("No errors to write.")
+		return nil
+	}
+
+	content := strings.Join(errorMsgs, "\n")
+	filePath := "sample.txt"
+
+	// Confirm where we are writing from
+	wd, _ := os.Getwd()
+	fmt.Printf("Current working directory: %s\n", wd)
+	fmt.Printf("Writing to: %s\n", filePath)
+
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		// Crash hard with useful context
+		return fmt.Errorf("failed to write to %s: %w", filePath, err)
+	}
+
+	fmt.Printf("Successfully wrote %d error(s) to %s\n", len(errorMsgs), filePath)
+	return nil
 }
