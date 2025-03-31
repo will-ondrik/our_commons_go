@@ -3,7 +3,9 @@ package main
 import (
 	"etl_our_commons/browser"
 	"etl_our_commons/constants"
+	"etl_our_commons/database"
 	"etl_our_commons/dtos"
+	flight "etl_our_commons/flights"
 	"etl_our_commons/processing"
 	"etl_our_commons/tasks"
 	"fmt"
@@ -13,7 +15,7 @@ import (
 
 /*
 Runtimes
-- Sequential runtime (commented out): 47 minutes per report
+- Sequential runtime: 47 minutes per report
 - Concurrent runtime (updated code): 24 minutes, 36 seconds per report
 */
 
@@ -57,7 +59,7 @@ func main() {
 
 	// Extract and add MPs to the processing queue
 	for i, report := range expenditures.Reports {
-
+		fmt.Println(report.DateRange)
 		if i == 1 {
 			break
 		}
@@ -69,8 +71,9 @@ func main() {
 		for _, mp := range mps {
 
 			// Send MPs to pool
-			mp.Year = report.Years
-			mp.Quarter = report.Quarter
+			mp.Years = report.DateRange
+			mp.FiscalQuarter = report.FiscalQuarter
+			mp.FiscalYear = report.FiscalYear
 			mpQueue <- mp
 		}
 	}
@@ -87,15 +90,29 @@ func main() {
 	// Process extracted HTML for Mps
 	fmt.Println("\nProcessing html store...")
 	mps := processing.ProcessData(htmlStore)
-	for _, mp := range mps {
-		fmt.Println("-----------------------------------")
-		fmt.Printf("MP Info: %+v\n", mp)
-		fmt.Println("-----------------------------------")
+	fmt.Println("Processing complete.")
 
+	fmt.Println("Initializing flight manager...")
+	fm, err := flight.NewFlightManager()
+	if err != nil {
+		panic(err)
+	}
+	
+	// Fetch and append travel data to mps
+	fmt.Println("Appending travel data to MPs...")
+	updatedMps, err := fm.AppendTravelDataToMps(mps)
+	if err != nil {
+		fmt.Println("Error appending travel data:", err)
+		panic("failed to append travel data to mps")
+	}
 
-		// TODO: Save items to db
-
-		
+	// Init db connection
+	// Batch insert data
+	db := database.NewDb()
+	err = db.InsertAll(db.Pool, updatedMps)
+	if err != nil {
+		fmt.Println("Error inserting mps: ", err)
+		panic(err)
 	}
 }
 
