@@ -11,5 +11,6 @@ type Traveller struct {
 	Date            string `json:"date"`
 	DepartureCity   string `json:"departureCity"`
 	DestinationCity string `json:"destinationCity"`
+	TravelData TravelData
 	TransportationMode string `json:"transportationMode"`
 }
