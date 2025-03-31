@@ -1,7 +1,9 @@
 package flight
 
 import (
+	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
+	"etl_our_commons/extract"
 	"fmt"
 )
 
@@ -14,48 +16,229 @@ type FlightManager struct {
 func NewFlightManager() (*FlightManager, error) {
 	as, err := NewAirportService()
 	if err != nil {
-		panic("failed to init airport service")
+		return nil, fmt.Errorf("failed to initialize airport service: %w", err)
+	}
+	
+	if as == nil {
+		return nil, fmt.Errorf("airport service is nil after initialization")
 	}
 
 	fs, err := NewFlightService()
 	if err != nil {
-		panic("failed to init airport service")
+		return nil, fmt.Errorf("failed to initialize flight service: %w", err)
+	}
+	
+	if fs == nil {
+		return nil, fmt.Errorf("flight service is nil after initialization")
 	}
 
-	return &FlightManager{
+	fm := &FlightManager{
 		AirportService: as,
 		FlightService: fs,
 		FlightCache: make(dtos.FlightCache),
-	}, nil
+	}
+	
+	fmt.Println("Flight manager initialized successfully")
+	return fm, nil
 }
 
 
 func (fm *FlightManager) GetFlightData(departureCity, destinationCity string) (*dtos.CarbonInterfaceResponse, error) {
+	if fm == nil {
+		return nil, fmt.Errorf("flight manager is nil")
+	}
+	
+	if fm.AirportService == nil {
+		return nil, fmt.Errorf("airport service is nil")
+	}
+	
+	if fm.FlightService == nil {
+		return nil, fmt.Errorf("flight service is nil")
+	}
+	
+	// Validate input
+	if departureCity == "" || destinationCity == "" {
+		return nil, fmt.Errorf("departure city or destination city is empty")
+	}
+	
+	
 	cities := fmt.Sprintf("%s_%s", departureCity, destinationCity)
+	fmt.Printf("Getting flight data for %s to %s\n", departureCity, destinationCity)
 
 	// Check flight cache
-	if travelData := fm.FlightService.GetCache(cities); travelData != nil {
-		return travelData, nil
+	if fm.FlightService != nil {
+		if travelData := fm.FlightService.GetCache(cities); travelData != nil {
+			fmt.Printf("Found flight data in cache for %s to %s\n", departureCity, destinationCity)
+			return travelData, nil
+		}
 	}
 
 	// Retrieve airport data from cache or fetch if missing
-	airports := fm.AirportService.GetCache(cities)
+	var airports *dtos.Trip
+	if fm.AirportService != nil {
+		airports = fm.AirportService.GetCache(cities)
+	}
+	
 	if airports == nil {
+		fmt.Printf("Airport data not found in cache for %s to %s, fetching...\n", departureCity, destinationCity)
 		var err error
-		airports, err = fm.AirportService.GetAirports(departureCity, destinationCity)
-		fmt.Printf("inside nil - airports: %v", airports)
-		if err != nil {
-			return nil, err
+		
+		if fm.AirportService == nil {
+			return nil, fmt.Errorf("airport service is nil when trying to get airports")
 		}
-		fm.AirportService.SetCache(cities, *airports)
+		
+		airports, err = fm.AirportService.GetAirports(departureCity, destinationCity)
+		fmt.Printf("GetAirports result: %v, error: %v\n", airports, err)
+		
+		if err != nil {
+			return nil, fmt.Errorf("failed to get airports: %w", err)
+		}
+		
+		// Validate data
+		if airports == nil {
+			return nil, fmt.Errorf("failed to get airport data for %s and %s", departureCity, destinationCity)
+		}
+		
+		// Check for valid IATA codes
+		if airports.DepartureAirport.IATA == "" || airports.DestinationAirport.IATA == "" {
+			return nil, fmt.Errorf("missing IATA code for airports: %s, %s", departureCity, destinationCity)
+		}
+		
+		if fm.AirportService != nil {
+			fm.AirportService.SetCache(cities, *airports)
+			fmt.Printf("Cached airport data for %s to %s\n", departureCity, destinationCity)
+		}
 	}
 
 	// Fetch flight estimate and update cache
+	if fm.FlightService == nil {
+		return nil, fmt.Errorf("flight service is nil when trying to get flight estimate")
+	}
+	
+	fmt.Printf("Fetching flight estimate for %s to %s\n", departureCity, destinationCity)
 	travelData, err := fm.FlightService.GetFlightEstimate(airports.DepartureAirport, airports.DestinationAirport)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get flight estimate: %w", err)
 	}
-	fm.FlightService.SetCache(cities, *travelData)
-
+	
+	// Validate data
+	if travelData == nil {
+		return nil, fmt.Errorf("received nil response from flight estimate API")
+	}
+	
+	if travelData.Data == nil {
+		return nil, fmt.Errorf("received response with nil Data field from flight estimate API")
+	}
+	
+	if travelData.Data.Attributes == nil {
+		return nil, fmt.Errorf("received response with nil Data.Attributes field from flight estimate API")
+	}
+	
+	if fm.FlightService != nil {
+		fm.FlightService.SetCache(cities, *travelData)
+		fmt.Printf("Cached flight data for %s to %s\n", departureCity, destinationCity)
+	}
+	
+	fmt.Printf("Successfully retrieved travel data for %s to %s\n", departureCity, destinationCity)
 	return travelData, nil
+}
+
+func (fm *FlightManager) AppendTravelDataToMps(mps []*dtos.Mp) ([]*dtos.Mp, error) {
+	var errorMessages []string
+
+	if fm == nil {
+        return mps, fmt.Errorf("flight manager is nil")
+    }
+    
+    if fm.AirportService == nil {
+        return mps, fmt.Errorf("airport service is nil")
+    }
+    
+    if fm.FlightService == nil {
+        return mps, fmt.Errorf("flight service is nil")
+    }
+    
+    if mps == nil {
+        return nil, fmt.Errorf("mps slice is nil")
+    }
+    
+    for _, mp := range mps {
+        if mp == nil {
+            fmt.Println("Warning: Encountered nil MP, skipping")
+            continue
+        }
+        
+        travelExpenses := mp.Expenses.TravelExpenses
+        
+		// Check if travelExpenses is nil
+        if travelExpenses == nil {
+            fmt.Println("Warning: Travel expenses is nil for MP:", mp.MpName)
+            continue
+        }
+        
+        for _, expense := range travelExpenses {
+            
+			// Check if expense is nil
+            if expense == nil {
+                fmt.Println("Warning: Encountered nil expense, skipping")
+                continue
+            }
+            
+            travelLogs := expense.TravelLogs
+            
+			// Check if travelLogs is nil
+            if travelLogs == nil {
+                fmt.Println("Warning: Travel logs is nil for expense:", expense.Claim)
+				fmt.Println("Warning: Travel logs is nil for mp:", mp.MpName)
+                continue
+            }
+            
+            for i := range travelLogs { 
+                
+				// Skip non-air transportation or empty cities
+                if travelLogs[i].TransportationMode != constants.AIR_TRANSPORTATION || 
+                   travelLogs[i].DepartureCity == constants.EMPTY_STR || 
+                   travelLogs[i].DestinationCity == constants.EMPTY_STR ||
+				   travelLogs[i].DepartureCity == travelLogs[i].DestinationCity {
+                    continue
+                }
+                
+                log := &travelLogs[i]
+                
+                fmt.Printf("Processing flight: %s to %s\n", log.DepartureCity, log.DestinationCity)
+                
+                // Get flight data
+				// Emissions and distance
+                travelData, err := fm.GetFlightData(log.DepartureCity, log.DestinationCity)
+                if err != nil {                    
+					errorMessages = append(errorMessages, fmt.Sprintf("MP: %s: Error getting flight data for %s to %s: %v\n", mp.MpName, log.DepartureCity, log.DestinationCity, err))
+                    continue
+                }
+
+                if travelData == nil || travelData.Data == nil || travelData.Data.Attributes == nil {
+                    fmt.Printf("Nil data in response for %s to %s\n", log.DepartureCity, log.DestinationCity)
+                    continue
+                }
+
+                log.TravelData = dtos.TravelData{
+                    Distance:      travelData.Data.Attributes.DistanceValue,
+                    DistanceUnit:  travelData.Data.Attributes.DistanceUnit,
+                    Emissions:     travelData.Data.Attributes.CarbonKilograms,
+                    EmissionsUnit: constants.KILOGRAMS,
+                }
+                
+                fmt.Printf("Successfully processed flight data for %s to %s\n", log.DepartureCity, log.DestinationCity)
+            }
+        }
+    }
+	extract.WriteFlightErrorsToFile(errorMessages)
+    return mps, nil
+}
+func (fm *FlightManager) MapsToJsonFile() {
+	// Handle flight cache
+
+
+	// Handle flight service cache
+
+	// handl
 }
