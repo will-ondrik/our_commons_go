@@ -25,7 +25,15 @@ func Mps(doc *goquery.Document) ([]*dtos.MpWithExpenseCategories, error) {
 			case 0:
 				format.Name(text, mp)
 			case 1:
-				mp.Constituency = text
+				if len(text) < 1 {
+					fmt.Println("NO TEXT FOR CONSTITUENCY", mp.MpName)
+					panic("no text for constituency")
+				}
+				if text == "" {
+					mp.Constituency = "None"
+				} else {
+					mp.Constituency = text
+				}
 			case 2:
 				mp.Caucus = text
 			case 3:
