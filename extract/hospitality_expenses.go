@@ -3,6 +3,8 @@ package extract
 import (
 	"etl_our_commons/dtos"
 	format "etl_our_commons/formatting"
+	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -21,6 +23,10 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 			continue
 		}
 
+		fmt.Println("Hospitality expenses outer row: ", row.Length())
+		fmt.Println("outer row text:", row.Text())
+		
+
 		hospitalityExpense := &dtos.HospitalityExpense{}
 		row.Find("td").Each(func(j int, cell *goquery.Selection) {
 			text := strings.TrimSpace(cell.Text())
@@ -30,12 +36,17 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 			case 1:
 				hospitalityExpense.Location = text
 			case 2:
-				attendance, err := strconv.Atoi(text)
-				if err != nil {
-					parseErr = err
-					return
+				text = strings.TrimSpace(text)
+				if text == "" {
+					hospitalityExpense.Attendance = 0 // Default value for empty attendance
+				} else {
+					attendance, err := strconv.Atoi(text)
+					if err != nil {
+						parseErr = err
+						return
+					}
+					hospitalityExpense.Attendance = attendance
 				}
-				hospitalityExpense.Attendance = attendance
 			case 3:
 				hospitalityExpense.Purpose = text
 			case 4:
@@ -50,6 +61,9 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 
 		// Process hidden data
 		hiddenRow := rows.Eq(i + 1)
+		fmt.Println("Hospitality inner row length: ", hiddenRow.Length())
+		fmt.Println("inner row text:", hiddenRow.Text())
+		
 
 		// Retrieve Event type
 		eventType := hiddenRow.Find(".col-md-4").Text()
@@ -57,6 +71,9 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 
 		var expenseLogs []dtos.ExpenseLogs
 		hiddenRow.Find("table tbody tr").Each(func(k int, nestedRow *goquery.Selection) {
+			fmt.Println("Hospitality inner row length: ", nestedRow.Length())
+			fmt.Println("inner row text:", nestedRow.Text())
+		
 			var expenseEntry dtos.ExpenseLogs
 			nestedRow.Find("td").Each(func(l int, cell *goquery.Selection) {
 				text := strings.TrimSpace(cell.Text())
@@ -83,4 +100,36 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 		hospitalityExpenses = append(hospitalityExpenses, hospitalityExpense)
 	}
 	return hospitalityExpenses, parseErr
+}
+
+func WriteErrs(expenses []*dtos.HospitalityExpense) error {
+	if len(expenses) == 0 {
+		fmt.Println("No expenses to write.")
+		return nil
+	}
+
+	// Convert expenses to string representations
+	var expenseStrings []string
+	for _, expense := range expenses {
+		expenseStr := fmt.Sprintf("Date: %s, Location: %s, Purpose: %s, Total Cost: %.2f", 
+			expense.Date, expense.Location, expense.Purpose, expense.TotalCost)
+		expenseStrings = append(expenseStrings, expenseStr)
+	}
+
+	content := strings.Join(expenseStrings, "\n")
+	filePath := "hospitality.txt"
+
+	// Confirm where we are writing from
+	wd, _ := os.Getwd()
+	fmt.Printf("Current working directory: %s\n", wd)
+	fmt.Printf("Writing to: %s\n", filePath)
+
+	err := os.WriteFile(filePath, []byte(content), 0644)
+	if err != nil {
+		// Crash hard with useful context
+		return fmt.Errorf("failed to write to %s: %w", filePath, err)
+	}
+
+	fmt.Printf("Successfully wrote %d expense(s) to %s\n", len(expenses), filePath)
+	return nil
 }
