@@ -174,11 +174,11 @@ func (db *DB) InsertExpenses(pool *pgxpool.Pool, mp *dtos.Mp, mpTermIds map[stri
 	for i, contract := range mp.Expenses.ContractExpenses {
 		var contractId int
 		err := pool.QueryRow(ctx, `
-			INSERT INTO contractexpenses (mpterm, amount)
-			VALUES ($1, $2)
-			ON CONFLICT (mpterm) DO NOTHING
+			INSERT INTO contractexpenses (mpterm, amount, url)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (mpterm) DO UPDATE SET url = EXCLUDED.url
 			RETURNING id;
-		`, mpTermId, contract.Total).Scan(&contractId)
+		`, mpTermId, contract.Total, mp.Expenses.ContractExpensesUrl).Scan(&contractId)
 
 		if err != nil && err != pgx.ErrNoRows {
 			return nil, err
@@ -206,11 +206,11 @@ func (db *DB) InsertExpenses(pool *pgxpool.Pool, mp *dtos.Mp, mpTermIds map[stri
 	if len(mp.Expenses.HospitalityExpenses) > 0 {
 		var hospitalityId int
 		err := pool.QueryRow(ctx, `
-			INSERT INTO hospitalityexpenses (mpterm, amount)
-			VALUES ($1, $2)
-			ON CONFLICT (mpterm) DO NOTHING
+			INSERT INTO hospitalityexpenses (mpterm, amount, url)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (mpterm) DO UPDATE SET url = EXCLUDED.url
 			RETURNING id;
-		`, mpTermId, mp.Expenses.HospitalityExpenses[0].TotalCost).Scan(&hospitalityId)
+		`, mpTermId, mp.Expenses.HospitalityExpenses[0].TotalCost, mp.Expenses.HospitalityExpensesUrl).Scan(&hospitalityId)
 
 		if err != nil && err != pgx.ErrNoRows {
 			return nil, err
@@ -228,11 +228,11 @@ func (db *DB) InsertExpenses(pool *pgxpool.Pool, mp *dtos.Mp, mpTermIds map[stri
 	if len(mp.Expenses.TravelExpenses) > 0 {
 		var travelId int
 		err := pool.QueryRow(ctx, `
-			INSERT INTO travelexpenses (mpterm, amount)
-			VALUES ($1, $2)
-			ON CONFLICT (mpterm) DO NOTHING
+			INSERT INTO travelexpenses (mpterm, amount, url)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (mpterm) DO UPDATE SET url = EXCLUDED.url
 			RETURNING id;
-		`, mpTermId, mp.Expenses.TravelExpenses[0].TravelCosts.Total).Scan(&travelId)
+		`, mpTermId, mp.Expenses.TravelExpenses[0].TravelCosts.Total, mp.Expenses.TravelExpensesUrl).Scan(&travelId)
 
 		if err != nil && err != pgx.ErrNoRows {
 			return nil, err
@@ -253,36 +253,30 @@ func (db *DB) InsertExpenses(pool *pgxpool.Pool, mp *dtos.Mp, mpTermIds map[stri
 // InsertMPs inserts MPs into the database and returns a mapping of MP names to their IDs
 func (db *DB) InsertMPs(pool *pgxpool.Pool, mps []*dtos.Mp) (map[string]int, error) {
 	mpIds := make(map[string]int)
-	batch := &pgx.Batch{}
 	ctx := context.Background()
 
+	// Process MPs one by one instead of in a batch for better error handling
 	for _, mp := range mps {
-		batch.Queue(`
+		// Check for empty firstName
+		if mp.MpName.FirstName == "" {
+			return nil, fmt.Errorf("MP has empty firstName: lastName=%s, constituency=%s, caucus=%s", 
+				mp.MpName.LastName, mp.Constituency, mp.Caucus)
+		}
+
+		var id int
+		err := pool.QueryRow(ctx, `
 			INSERT INTO mp (firstname, lastname, constituency, caucus)
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (firstname, lastname) DO NOTHING
+			ON CONFLICT (firstname, lastname) DO UPDATE 
+			SET constituency = $3, caucus = $4
 			RETURNING id;
-		`, mp.MpName.FirstName, mp.MpName.LastName, mp.Constituency, mp.Caucus)
-	}
-
-	batchResults := pool.SendBatch(ctx, batch)
-	defer batchResults.Close()
-
-	for _, mp := range mps {
-		var id int
-		err := batchResults.QueryRow().Scan(&id)
+		`, mp.MpName.FirstName, mp.MpName.LastName, mp.Constituency, mp.Caucus).Scan(&id)
+		
 		if err != nil {
-			if err == pgx.ErrNoRows {
-				err = pool.QueryRow(ctx, `
-					SELECT id FROM mp WHERE firstname = $1 AND lastname = $2;
-				`, mp.MpName.FirstName, mp.MpName.LastName).Scan(&id)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, err
-			}
+			return nil, fmt.Errorf("failed to insert MP %s %s: %w", 
+				mp.MpName.FirstName, mp.MpName.LastName, err)
 		}
+		
 		mpIds[mp.MpName.FirstName+"_"+mp.MpName.LastName] = id
 	}
 
@@ -303,11 +297,11 @@ func (db *DB) InsertMPTerms(pool *pgxpool.Pool, mps []*dtos.Mp, mpIds map[string
 		}
 
 		batch.Queue(`
-			INSERT INTO mpterm (mpid, startdate, enddate, fiscalyear, fiscalquarter, constituency, caucus) 
-			VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (mpid, fiscalyear, fiscalquarter) DO NOTHING 
+			INSERT INTO mpterm (mpid, startdate, enddate, fiscalyear, fiscalquarter, constituency, caucus, url) 
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			ON CONFLICT (mpid, fiscalyear, fiscalquarter) DO UPDATE SET url = EXCLUDED.url 
 			RETURNING id;
-		`, mpId, mp.Years.StartDate, mp.Years.EndDate, mp.FiscalYear, mp.FiscalQuarter, mp.Constituency, mp.Caucus)
+		`, mpId, mp.Years.StartDate, mp.Years.EndDate, mp.FiscalYear, mp.FiscalQuarter, mp.Constituency, mp.Caucus, mp.Url)
 	}
 
 	batchResults := pool.SendBatch(ctx, batch)
@@ -357,15 +351,25 @@ func (db *DB) InsertHospitalityEvents(pool *pgxpool.Pool, mp *dtos.Mp, expenseId
 		}
 	}()
 
+	// Default date to use when date strings are empty
+	const defaultDate = "1970-01-01"
+
 	// Insert hospitality events
 	for _, expense := range mp.Expenses.HospitalityExpenses {
+		// Check for empty date and use default if needed
+		expenseDate := expense.Date
+		if expenseDate == "" {
+			fmt.Printf("Warning: Empty date for hospitality event, using default date\n")
+			expenseDate = defaultDate
+		}
+
 		var id int
 		err := tx.QueryRow(ctx, `
 			INSERT INTO hospitalityevents (expenseid, expensedate, location, purpose, amount)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (expenseid, expensedate) DO NOTHING
 			RETURNING id;
-		`, hospitalityExpenseId, expense.Date, expense.Location, expense.Purpose, expense.TotalCost).Scan(&id)
+		`, hospitalityExpenseId, expenseDate, expense.Location, expense.Purpose, expense.TotalCost).Scan(&id)
 
 		if err != nil && err != pgx.ErrNoRows {
 			return nil, fmt.Errorf("failed to insert hospitality event: %w", err)
@@ -376,7 +380,7 @@ func (db *DB) InsertHospitalityEvents(pool *pgxpool.Pool, mp *dtos.Mp, expenseId
 			err = tx.QueryRow(ctx, `
 				SELECT id FROM hospitalityevents 
 				WHERE expenseid = $1 AND expensedate = $2;
-			`, hospitalityExpenseId, expense.Date).Scan(&id)
+			`, hospitalityExpenseId, expenseDate).Scan(&id)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get existing hospitality event ID: %w", err)
 			}
@@ -485,12 +489,20 @@ func (db *DB) InsertTravellerLogs(pool *pgxpool.Pool, mp *dtos.Mp, expenseIds ma
 			}
 
 			var id int
+			var travelDate interface{} = traveller.Date
+			
+			// Convert empty string to nil (NULL in database)
+			if traveller.Date == "" {
+				travelDate = nil
+				fmt.Printf("Using NULL for travel date for %s %s\n", traveller.Name.FirstName, traveller.Name.LastName)
+			}
+
 			err := tx.QueryRow(ctx, `
 				INSERT INTO travellerlogs (eventid, travellerid, traveldate, purpose, departurecity, destinationcity, transportationmode)
 				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				ON CONFLICT (eventid, travellerid, traveldate) DO NOTHING
 				RETURNING id;
-			`, eventId, travellerId, traveller.Date, traveller.Purpose, traveller.DepartureCity, traveller.DestinationCity, traveller.TransportationMode).Scan(&id)
+			`, eventId, travellerId, travelDate, traveller.Purpose, traveller.DepartureCity, traveller.DestinationCity, traveller.TransportationMode).Scan(&id)
 
 			if err != nil && err != pgx.ErrNoRows {
 				return nil, fmt.Errorf("failed to insert traveller log: %w", err)
@@ -672,7 +684,7 @@ func (db *DB) InsertQuarterlyReports(pool *pgxpool.Pool, mp *dtos.Mp) error {
 		INSERT INTO quarterlyreports (startdate, enddate, fiscalyear, fiscalquarter, href)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (href) DO NOTHING;
-	`, mp.Years.StartDate, mp.Years.EndDate, mp.FiscalYear, mp.FiscalQuarter, fmt.Sprintf("/reports/%d/Q%d", mp.FiscalYear, mp.FiscalQuarter))
+	`, mp.Years.StartDate, mp.Years.EndDate, mp.FiscalYear, mp.FiscalQuarter, mp.Url)
 
 	batchResults := pool.SendBatch(ctx, batch)
 	defer batchResults.Close()
@@ -712,23 +724,23 @@ func (db *DB) InsertTravelEvents(pool *pgxpool.Pool, mp *dtos.Mp, expenseIds map
 
 	// Insert travel events
 	for _, travel := range mp.Expenses.TravelExpenses {
-		startDate := travel.Dates.StartDate
-		endDate := travel.Dates.EndDate
+		var startDate, endDate interface{} = travel.Dates.StartDate, travel.Dates.EndDate
 
-		if startDate == "" {
-			fmt.Printf("Warning: Empty start date for claim %s, using default date\n", travel.Claim)
-			startDate = defaultDate
+		// Convert "Not Provided" to nil (NULL in database)
+		if travel.Dates.StartDate == "Not Provided" || travel.Dates.StartDate == "" {
+			startDate = nil
+			fmt.Printf("Using NULL for start date for claim %s\n", travel.Claim)
 		}
-		if endDate == "" {
-			fmt.Printf("Warning: Empty end date for claim %s, using default date\n", travel.Claim)
-			endDate = defaultDate
+		if travel.Dates.EndDate == "Not Provided" || travel.Dates.EndDate == "" {
+			endDate = nil
+			fmt.Printf("Using NULL for end date for claim %s\n", travel.Claim)
 		}
 
 		var id int
 		err := tx.QueryRow(ctx, `
 			INSERT INTO travelevents (expenseid, claimnumber, startdate, enddate)
 			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (expenseid, startdate) DO NOTHING
+			ON CONFLICT (expenseid, claimnumber) DO NOTHING
 			RETURNING id;
 		`, travelExpenseId, travel.Claim, startDate, endDate).Scan(&id)
 
@@ -738,8 +750,8 @@ func (db *DB) InsertTravelEvents(pool *pgxpool.Pool, mp *dtos.Mp, expenseIds map
 				// Already exists, get existing ID
 				err = tx.QueryRow(ctx, `
 					SELECT id FROM travelevents 
-					WHERE expenseid = $1 AND startdate = $2;
-				`, travelExpenseId, startDate).Scan(&id)
+					WHERE expenseid = $1 AND claimnumber = $2;
+				`, travelExpenseId, travel.Claim).Scan(&id)
 				if err != nil {
 					return nil, fmt.Errorf("failed to fetch existing travel event ID: %w", err)
 				}
