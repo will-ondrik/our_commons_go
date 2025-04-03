@@ -12,6 +12,7 @@ type MpWithExpenseCategories struct {
 	Years                DateRange `json:"year"`
 	FiscalYear int `json:"fiscalYear"`
 	FiscalQuarter             int       `json:"quarter"`
+	Url                 string    `json:"url"`
 }
 
 type Category struct {
@@ -34,13 +35,17 @@ type Mp struct {
 	FiscalYear int
 	FiscalQuarter int
 	Expenses      Expenses
+	Url string
 }
 
 type Expenses struct {
 	Totals              ExpenseTotals
 	ContractExpenses    []*ContractExpense
+	ContractExpensesUrl string
 	HospitalityExpenses []*HospitalityExpense
+	HospitalityExpensesUrl string
 	TravelExpenses      []*TravelExpense
+	TravelExpensesUrl string
 }
 
 type ExpenseTotals struct {
