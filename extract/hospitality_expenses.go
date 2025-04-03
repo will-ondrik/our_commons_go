@@ -99,6 +99,7 @@ func MpHospitalityExpenses(doc *goquery.Document) ([]*dtos.HospitalityExpense, e
 		hospitalityExpense.Event.ExpenseLogs = expenseLogs
 		hospitalityExpenses = append(hospitalityExpenses, hospitalityExpense)
 	}
+	WriteErrs(hospitalityExpenses)
 	return hospitalityExpenses, parseErr
 }
 
@@ -108,7 +109,6 @@ func WriteErrs(expenses []*dtos.HospitalityExpense) error {
 		return nil
 	}
 
-	// Convert expenses to string representations
 	var expenseStrings []string
 	for _, expense := range expenses {
 		expenseStr := fmt.Sprintf("Date: %s, Location: %s, Purpose: %s, Total Cost: %.2f", 
@@ -119,14 +119,12 @@ func WriteErrs(expenses []*dtos.HospitalityExpense) error {
 	content := strings.Join(expenseStrings, "\n")
 	filePath := "hospitality.txt"
 
-	// Confirm where we are writing from
 	wd, _ := os.Getwd()
 	fmt.Printf("Current working directory: %s\n", wd)
 	fmt.Printf("Writing to: %s\n", filePath)
 
 	err := os.WriteFile(filePath, []byte(content), 0644)
 	if err != nil {
-		// Crash hard with useful context
 		return fmt.Errorf("failed to write to %s: %w", filePath, err)
 	}
 
