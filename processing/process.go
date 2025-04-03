@@ -75,6 +75,12 @@ func ProcessData(mpHtml []*dtos.MpHtml) []*dtos.Mp {
 		mp.Years = html.Info.Years
 		mp.FiscalYear = html.Info.FiscalYear
 		mp.FiscalQuarter = html.Info.FiscalQuarter
+		mp.Url = html.Info.Url 
+		
+		// Add expense URLs to the Expenses struct
+		mp.Expenses.ContractExpensesUrl = html.Info.ContractExpenses.Href
+		mp.Expenses.HospitalityExpensesUrl = html.Info.HospitalityExpenses.Href
+		mp.Expenses.TravelExpensesUrl = html.Info.TravelExpenses.Href
 
 		if html.Contract != nil {
 			wg.Add(1)
