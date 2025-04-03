@@ -32,6 +32,36 @@ var (
 		"to attend training",
 		"travel to/from constituency and Ottawa",
 	}
+
+	// Fallback for cities without an airport (airport in close proximity)
+	AIRPORT_FALLBACK = map[string]string{
+		"Eskasoni": "Sydney",
+		"Burnaby": "Vancouver",
+		"Boundary Bay" : "Vancouver",
+		"Duncan": "Victoria",  
+		"Brantford": "Hamilton", 
+		"Midland": "Toronto",   
+		"Fort McMurray": "Edmonton", 
+		"Two Hills": "Edmonton", 
+		"Vegreville": "Edmonton", 
+		"Thompson": "Winnipeg",   
+		"Collingwood": "Toronto", 
+		"New Glasgow": "Halifax",
+		"Penticton": "Kelowna", 
+	}
+
+	// IATA code replacements for problematic airport codes
+	IATA_REPLACEMENTS = map[string]string{
+		"ZBD": "YVR", // Replace Boundary Bay with Vancouver International
+		"DUQ": "YYJ", // Replace Duncan with Victoria
+		"YFD": "YHM", // Replace Brantford with Hamilton
+		"YEE": "YYZ", // Replace Midland/Huronia with Toronto
+		"NML": "YEG", // Replace Fort McMurray/Mildred Lake with Edmonton
+		"ZSP": "YEG", // Replace St. Paul with Edmonton
+		"YGD": "YYZ", // Replace Goderich with Toronto
+		"YJM": "YXS", // Replace Fort St. James with Prince George
+		"XCM": "YHZ", // Replace Chatham Kent with Halifax for New Glasgow
+	}
 )
 
 const (
@@ -43,6 +73,9 @@ const (
 	// Transporation modes
 	GROUND_TRANSPORTATION   = "Car"
 	AIR_TRANSPORTATION = "Plane"
+
+	// Distance limit (if within this range, it cannot be a flight)
+	KM_THRESHHOLD = 100
 
 	// Emissions Units
 	// Always in Kilograms
