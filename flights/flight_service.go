@@ -129,6 +129,16 @@ func (f *FlightService) GetFlightEstimate(departureData, destinationData dtos.Ai
 	if departureData.IATA == "" || destinationData.IATA == "" {
 		return nil, fmt.Errorf("missing IATA code for airports: %s, %s", departureData.City, destinationData.City)
 	}
+	
+	// Check for problematic IATA codes that might be in the data
+	// This is a safety check in case the AirportService didn't catch them
+	problematicCodes := []string{"ZBD", "DUQ", "YFD", "YEE", "NML", "ZSP", "YGD", "YJM", "XCM"}
+	
+	for _, code := range problematicCodes {
+		if departureData.IATA == code || destinationData.IATA == code {
+			return nil, fmt.Errorf("problematic IATA code detected: %s. Please ensure airport codes are properly replaced before calling this method", code)
+		}
+	}
 
 	ciRequest := dtos.CarbonInterfaceRequest{
 		Type:       "flight",
