@@ -9,10 +9,8 @@ import (
 	"os"
 	"slices"
 	"strconv"
-
 	"strings"
-
-	//"sync"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -49,61 +47,127 @@ func FiscalQuarter(text string) (int, error) {
 }
 
 func ReportDates(text string) (dtos.DateRange, error) {
+	fmt.Println("ReportDates input text:", text)
+	
 	splitText := strings.Split(text, "\n")
 	if len(splitText) == 0 {
 		return dtos.DateRange{}, fmt.Errorf("invalid text format: no lines found")
 	}
 	
+	fmt.Println("splitText[0]:", splitText[0])
+	
 	tt := strings.Split(splitText[0], " – ")
+	fmt.Println("tt after split:", tt)
+	
 	if len(tt) < 2 {
-		return dtos.DateRange{}, fmt.Errorf("invalid text format: missing date range separator")
+		tt = strings.Split(splitText[0], " - ")
+		fmt.Println("tt after regular dash split:", tt)
+		
+		if len(tt) < 2 {
+			return dtos.DateRange{}, fmt.Errorf("invalid text format: missing date range separator")
+		}
 	}
 	
 	dateRangeStr := tt[1]
+	fmt.Println("dateRangeStr:", dateRangeStr)
+	
 	dateRangeStr = strings.ReplaceAll(dateRangeStr, "From ", "")
+	fmt.Println("dateRangeStr after removing 'From ':", dateRangeStr)
+	
 	dates := strings.Split(dateRangeStr, " to ")
+	fmt.Println("dates after split:", dates)
 	
 	if len(dates) < 2 {
 		return dtos.DateRange{}, fmt.Errorf("invalid date range format: missing 'to' separator")
 	}
 
-	dateRange := dtos.DateRange{
-		StartDate: dates[0],
-		EndDate:   dates[1],
+	startDate := strings.TrimSpace(dates[0])
+	endDate := strings.TrimSpace(dates[1])
+	
+	fmt.Println("startDate:", startDate)
+	fmt.Println("endDate:", endDate)
+	
+	// Check if already in Postgres format
+	if format.IsPostgresDate(startDate) && format.IsPostgresDate(endDate) {
+		fmt.Println("Dates are already in PostgreSQL format")
+		return dtos.DateRange{
+			StartDate: startDate,
+			EndDate: endDate,
+		}, nil
 	}
+
+	dateRange := dtos.DateRange{
+		StartDate: startDate,
+		EndDate:   endDate,
+	}
+	
+	fmt.Println("dateRange before conversion:", dateRange)
 
 	formattedDateRange, err := format.ConvertDateFormat(dateRange)
 	if err != nil {
-		return dtos.DateRange{}, err
+		// If conversion fails, return the original dates
+		fmt.Println("Conversion failed:", err)
+		return dateRange, nil
 	}
+	
+	fmt.Println("formattedDateRange after conversion:", formattedDateRange)
 
 	return formattedDateRange, nil
 }
 
 func ReportYear(dateRange dtos.DateRange) (int, error) {
+	fmt.Println("ReportYear input dateRange:", dateRange)
+	
 	// Handle empty date
 	if dateRange.StartDate == "" {
-		return 0, fmt.Errorf("empty date string")
+		// Default to current year if date is empty
+		currentYear := time.Now().Year()
+		fmt.Println("Using current year as fallback:", currentYear)
+		return currentYear, nil
 	}
 	
-	startDateSplit := strings.Split(dateRange.StartDate, "-")
+	fmt.Println("StartDate:", dateRange.StartDate)
 	
-	if len(startDateSplit) == 0 {
-		return 0, fmt.Errorf("invalid date format: missing year")
+	// Check if the date is in Postgres format
+	if format.IsPostgresDate(dateRange.StartDate) {
+		startDateSplit := strings.Split(dateRange.StartDate, "-")
+		fmt.Println("startDateSplit:", startDateSplit)
+		
+		if len(startDateSplit) >= 1 {
+			// Handle empty year part
+			yearStr := strings.TrimSpace(startDateSplit[0])
+			fmt.Println("yearStr:", yearStr)
+			
+			if yearStr != "" {
+				year, err := strconv.Atoi(yearStr)
+				if err == nil {
+					fmt.Println("Extracted year:", year)
+					return year, nil
+				}
+				fmt.Println("Error converting year:", err)
+			}
+		}
 	}
 	
-	// Handle empty year part
-	yearStr := strings.TrimSpace(startDateSplit[0])
-	if yearStr == "" {
-		return 0, fmt.Errorf("empty year part in date")
-	}
-
-	year, err := strconv.Atoi(yearStr)
-	if err != nil {
-		return 0, fmt.Errorf("failed to convert year: %v", err)
+	// If year cannot be extracted, try to parse it as a full date
+	for _, format := range []string{
+		"2006-01-02",
+		"January 2, 2006",
+		"Jan 2, 2006",
+		"2006/01/02",
+	} {
+		t, err := time.Parse(format, dateRange.StartDate)
+		if err == nil {
+			year := t.Year()
+			fmt.Println("Parsed year using format", format, ":", year)
+			return year, nil
+		}
 	}
 	
-	return year, nil
+	// If all fails, use the current year
+	currentYear := time.Now().Year()
+	fmt.Println("Using current year as last resort:", currentYear)
+	return currentYear, nil
 }
 
 
@@ -157,3 +221,4 @@ func WriteFlightErrorsToFile(errorMsgs []string) error {
 	fmt.Printf("Successfully wrote %d error(s) to %s\n", len(errorMsgs), filePath)
 	return nil
 }
+
