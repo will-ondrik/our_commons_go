@@ -47,19 +47,40 @@ func Name(fullName string, mp *dtos.MpWithExpenseCategories) {
 	mp.MpName.LastName = lastName
 }
 
-func TravellerNameAndType (travellerDetails string) (string, dtos.Name) {
-	split := strings.Split(travellerDetails, "(")
+// TODO: Refactor - some of this is unnecessary
+func TravellerNameAndType(travellerDetails string) (string, dtos.Name) {
+	fmt.Println("Traveller details string:", travellerDetails)
+	// Check if it contains a name in parentheses
+	if strings.Contains(travellerDetails, "(") && strings.Contains(travellerDetails, ")") {
+		split := strings.SplitN(travellerDetails, "(", 2)
+		travellerType := strings.TrimSpace(split[0])
 
-	travellerType := strings.TrimSpace(split[0])
+		// Clean and extract name
+		nameRaw := strings.TrimSpace(strings.TrimRight(split[1], ")"))
+		nameSlice := strings.Split(nameRaw, ", ")
 
-	name := strings.ReplaceAll(split[1], ")", "")
-	nameSlice := strings.Split(strings.TrimSpace(name), ", ")
+		if len(nameSlice) == 2 {
+			return travellerType, dtos.Name{
+				FirstName: strings.TrimSpace(nameSlice[1]),
+				LastName:  strings.TrimSpace(nameSlice[0]),
+			}
+		}
 
-	return travellerType, dtos.Name{
-		FirstName: nameSlice[1],
-		LastName: nameSlice[0],
+		// Fallback if name doesn't split as expected
+		return travellerType, dtos.Name{
+			FirstName: "",
+			LastName:  nameRaw,
+		}
+	}
+
+	// No parentheses - treat whole string as name or type
+	return "Unknown", dtos.Name{
+		FirstName: "",
+		LastName:  strings.TrimSpace(travellerDetails),
 	}
 }
+
+
 
 func ExpenseToFloat(expenseTotal string) (float64, error) {
 	// Handle empty strings
@@ -81,6 +102,7 @@ func ExpenseToFloat(expenseTotal string) (float64, error) {
 }
 
 func StringToDateRange(dateStr string) (dtos.DateRange, error) {
+	fmt.Println("date string:", dateStr)
 	dateStr = strings.TrimSpace(dateStr)
 
 	if dateStr == "" {
@@ -90,50 +112,60 @@ func StringToDateRange(dateStr string) (dtos.DateRange, error) {
 		}, nil
 	}
 
-	// Original logic for format like "From January 1, 2025 to January 31, 2025"
-	if strings.Contains(dateStr, "to") && len(strings.Split(dateStr, " ")) >= 4 {
-		dateArr := strings.Split(dateStr, " ")
-		if len(dateArr) >= 4 {
-			dateRange := dtos.DateRange{
-				StartDate: dateArr[1],
-				EndDate:   dateArr[3],
+	// Normalize spacing and remove optional "From"
+	dateStr = strings.ReplaceAll(dateStr, "From ", "")
+	dateStr = strings.ReplaceAll(dateStr, "from ", "")
+	dateStr = strings.Join(strings.Fields(dateStr), " ") // Collapse spaces
+
+	// Safe "to" range check
+	if strings.Contains(dateStr, " to ") {
+		dateArr := strings.Split(dateStr, " to ")
+		if len(dateArr) == 2 {
+			startDate := strings.TrimSpace(dateArr[0])
+			endDate := strings.TrimSpace(dateArr[1])
+
+			// Check if already in PSQL format
+			if IsPostgresDate(startDate) && IsPostgresDate(endDate) {
+				return dtos.DateRange{StartDate: startDate, EndDate: endDate}, nil
 			}
 
-			formattedDateRange, err := ConvertDateFormat(dateRange)
+			// Try conversion
+			dateRange := dtos.DateRange{StartDate: startDate, EndDate: endDate}
+			formatted, err := ConvertDateFormat(dateRange)
 			if err != nil {
 				return dateRange, nil
 			}
-
-			return formattedDateRange, nil
+			return formatted, nil
 		}
 	}
 
-	// Check if the date string is in "YYYY-MM-DD" format
+	// Handle single PSQL-style date
+	if IsPostgresDate(dateStr) {
+		return dtos.DateRange{
+			StartDate: dateStr,
+			EndDate:   dateStr,
+		}, nil
+	}
+
+	// Handle malformed but dash-containing ranges
 	if strings.Contains(dateStr, "-") {
-
-		// If it's a single date, use it for both start and end
-		if !strings.Contains(dateStr, " ") {
+		parts := strings.Fields(dateStr)
+		if len(parts) == 2 {
 			return dtos.DateRange{
-				StartDate: dateStr,
-				EndDate:   dateStr,
-			}, nil
-		}
-		
-		// If it's a range like "2025-01-01 to  2025-01-31"
-		dateArr := strings.Split(dateStr, " ")
-		if len(dateArr) >= 2 {
-			return dtos.DateRange{
-				StartDate: dateArr[0],
-				EndDate:   dateArr[len(dateArr)-1], // Use the last element in case there are more spaces
+				StartDate: parts[0],
+				EndDate:   parts[1],
 			}, nil
 		}
 	}
 
+	// Final fallback
 	return dtos.DateRange{
 		StartDate: dateStr,
 		EndDate:   dateStr,
 	}, nil
 }
+
+
 
 func FlightPointsToFloat(flightPoints string) (float64, error) {
 	
@@ -252,7 +284,12 @@ func IsTripCancelled(travelPurpose string) bool {
 }
 
 func HandleCancelledTrip(traveller *dtos.Traveller, dates dtos.DateRange) {
-	traveller.Date = dates.StartDate
+	// Set date to empty string if dates.StartDate is "Not Provided"
+	if dates.StartDate == "Not Provided" {
+		traveller.Date = ""  // This will be converted to NULL in the database
+	} else {
+		traveller.Date = dates.StartDate
+	}
 	traveller.DepartureCity = "Not Listed"
 	traveller.DestinationCity = "Not Listed"
 }
@@ -265,7 +302,12 @@ func IsLoungeVisit(travelPurpose string) bool {
 }
 
 func HandleLoungeVisit(traveller *dtos.Traveller, dates dtos.DateRange) {
-	traveller.Date = dates.StartDate
+	// Set date to empty string if dates.StartDate is "Not Provided"
+	if dates.StartDate == "Not Provided" {
+		traveller.Date = ""  // This will be converted to NULL in the database
+	} else {
+		traveller.Date = dates.StartDate
+	}
 	traveller.DepartureCity = "Not Listed"
 	traveller.DestinationCity = "Not Listed"
 }
@@ -273,6 +315,10 @@ func HandleLoungeVisit(traveller *dtos.Traveller, dates dtos.DateRange) {
 // Remove extra parenthese and their corresponding text
 // This will prevent airport search failure
 func CityName(city string) string {
+
+	if strings.Contains(city, "montréal, qc") || strings.Contains(city, "montréal") {
+		return "Montreal"
+	}
 	
 	var formatted []rune
 	insideParen := false
@@ -294,4 +340,9 @@ func CityName(city string) string {
 	}
 
 	return string(formatted)
+}
+
+func IsPostgresDate(dateStr string) bool {
+	_, err := time.Parse("2006-01-02", dateStr)
+	return err == nil
 }
