@@ -9,4 +9,5 @@ type MpTerm struct {
 	FiscalQuarter int
 	Constituency string
 	Caucus string
+	Url string
 }
