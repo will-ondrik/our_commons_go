@@ -1,10 +1,12 @@
 package flight
 
 import (
+	"encoding/json"
 	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"etl_our_commons/extract"
 	"fmt"
+	"os"
 )
 
 type FlightManager struct {
@@ -192,8 +194,21 @@ func (fm *FlightManager) AppendTravelDataToMps(mps []*dtos.Mp) ([]*dtos.Mp, erro
 				fmt.Println("Warning: Travel logs is nil for mp:", mp.MpName)
                 continue
             }
+
             
             for i := range travelLogs { 
+
+				// Check is KM distance is within threshold
+				// Prevent drivable distances from being included as flights
+				isDriveDistance, err := fm.AirportService.IsDriveDistance(travelLogs[i].DepartureCity, travelLogs[i].DestinationCity)
+				if err != nil {
+					fmt.Printf("Error: Failed to check potential drive distance: %s", err)
+				}
+
+				if isDriveDistance {
+					log := &travelLogs[i]
+					log.TransportationMode = constants.GROUND_TRANSPORTATION
+				}
                 
 				// Skip non-air transportation or empty cities
                 if travelLogs[i].TransportationMode != constants.AIR_TRANSPORTATION || 
@@ -234,11 +249,35 @@ func (fm *FlightManager) AppendTravelDataToMps(mps []*dtos.Mp) ([]*dtos.Mp, erro
 	extract.WriteFlightErrorsToFile(errorMessages)
     return mps, nil
 }
-func (fm *FlightManager) MapsToJsonFile() {
-	// Handle flight cache
 
+// Write Flight cache to JSON file
+// TODO: Refer to this after processing all files
+// Will cut costs of CarbonInterface API calls
+// Converting this into a cache will save intensive API calls
+func (fm *FlightManager) FlightMapToJsonFile(flightCache dtos.FlightCache) error {
+	fileName := "flight_cache.json"
+	var existingData []dtos.FlightCache
 
-	// Handle flight service cache
+	if data, err := os.ReadFile(fileName); err == nil {
+		if len(data) > 0 {
+			if err := json.Unmarshal(data, &existingData); err != nil {
+				return fmt.Errorf("failed to unmarshal existing data: %s", err)
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to check file: %s", err)
+	}
 
-	// handl
+	existingData = append(existingData, flightCache)
+
+	jsonData, err := json.MarshalIndent(existingData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal data to json: %s", err)
+	}
+
+	if err := os.WriteFile(fileName, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write to file: %s", err)
+	}
+
+	return nil
 }
