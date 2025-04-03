@@ -2,6 +2,7 @@ package flight
 
 import (
 	"encoding/json"
+	"etl_our_commons/constants"
 	"etl_our_commons/dtos"
 	"fmt"
 	"io"
@@ -84,6 +85,42 @@ func ParseAirportsFile() (dtos.AirportsList, error) {
 }
 
 
+// ReplaceProblematicIATA checks if an IATA code is in the list of problematic codes
+// and returns a replacement if available
+func (a *AirportService) ReplaceProblematicIATA(iataCode string) string {
+	if replacement, exists := constants.IATA_REPLACEMENTS[iataCode]; exists {
+		fmt.Printf("Replacing problematic IATA code %s with %s\n", iataCode, replacement)
+		return replacement
+	}
+	return iataCode
+}
+
+// GetAirportByIATA finds an airport by its IATA code
+func (a *AirportService) GetAirportByIATA(iataCode string) (dtos.AirportData, bool) {
+	if a == nil || a.AirportsMap == nil {
+		fmt.Println("Warning: AirportService or AirportsMap is nil in GetAirportByIATA")
+		return dtos.AirportData{}, false
+	}
+	
+	if iataCode == "" {
+		fmt.Println("Warning: IATA code is empty in GetAirportByIATA")
+		return dtos.AirportData{}, false
+	}
+	
+	fmt.Printf("Looking for airport with IATA code %s\n", iataCode)
+	
+	for _, airport := range a.AirportsMap {
+		if airport.IATA == iataCode {
+			fmt.Printf("Found airport with IATA code %s: %s (%s)\n", iataCode, airport.Name, airport.City)
+			return airport, true
+		}
+	}
+	
+	fmt.Printf("Could not find airport with IATA code %s\n", iataCode)
+	return dtos.AirportData{}, false
+}
+
+// TODO: Refactor this function - very bloated
 func (a *AirportService) GetAirports(departureCity, destinationCity string) (*dtos.Trip, error) {
 	if a == nil {
 		return nil, fmt.Errorf("airport service is nil")
@@ -106,13 +143,31 @@ func (a *AirportService) GetAirports(departureCity, destinationCity string) (*dt
 		// Handle departure airport
 		if !foundDeparture && (airport.City == departureCity || strings.Contains(airport.Name, departureCity)) {
 			if airport.IATA != "" {
-				trip.DepartureAirport = airport
+				// Check if this is a problematic IATA code
+				replacementIATA := a.ReplaceProblematicIATA(airport.IATA)
+				
+				if replacementIATA != airport.IATA {
+					// If there is a replacement, use the airport with that IATA code
+					if replacementAirport, found := a.GetAirportByIATA(replacementIATA); found {
+						trip.DepartureAirport = replacementAirport
+					} else {
+						// If replacement airport not found, create a modified copy of the current airport
+						modifiedAirport := airport
+						modifiedAirport.IATA = replacementIATA
+						trip.DepartureAirport = modifiedAirport
+					}
+				} else {
+					trip.DepartureAirport = airport
+				}
+				
 				foundDeparture = true
-				fmt.Printf("Found departure airport for %s: %s (%s)\n", departureCity, airport.Name, airport.IATA)
+				fmt.Printf("Found departure airport for %s: %s (%s)\n", departureCity, trip.DepartureAirport.Name, trip.DepartureAirport.IATA)
 			} else {
 				fmt.Printf("Warning: No IATA code for departure airport in %s, searching nearby...\n", departureCity)
 				nearest := a.FindNearestAirport(airport, a.AirportsMap)
 				if nearest.IATA != "" {
+					// Check if the nearest airport has a problematic IATA code
+					nearest.IATA = a.ReplaceProblematicIATA(nearest.IATA)
 					trip.DepartureAirport = nearest
 					foundDeparture = true
 					fmt.Printf("Using nearest airport for %s: %s (%s)\n", departureCity, nearest.Name, nearest.IATA)
@@ -123,13 +178,31 @@ func (a *AirportService) GetAirports(departureCity, destinationCity string) (*dt
 		// Handle destination airport
 		if !foundDestination && airport.City == destinationCity && airport.Country == "CA" {
 			if airport.IATA != "" {
-				trip.DestinationAirport = airport
+				// Check if this is a problematic IATA code
+				replacementIATA := a.ReplaceProblematicIATA(airport.IATA)
+				
+				if replacementIATA != airport.IATA {
+					// If we have a replacement, use the airport with that IATA code
+					if replacementAirport, found := a.GetAirportByIATA(replacementIATA); found {
+						trip.DestinationAirport = replacementAirport
+					} else {
+						// If replacement airport not found, create a modified copy of the current airport
+						modifiedAirport := airport
+						modifiedAirport.IATA = replacementIATA
+						trip.DestinationAirport = modifiedAirport
+					}
+				} else {
+					trip.DestinationAirport = airport
+				}
+				
 				foundDestination = true
-				fmt.Printf("Found destination airport for %s: %s (%s)\n", destinationCity, airport.Name, airport.IATA)
+				fmt.Printf("Found destination airport for %s: %s (%s)\n", destinationCity, trip.DestinationAirport.Name, trip.DestinationAirport.IATA)
 			} else {
 				fmt.Printf("Warning: No IATA code for destination airport in %s, searching nearby...\n", destinationCity)
 				nearest := a.FindNearestAirport(airport, a.AirportsMap)
 				if nearest.IATA != "" {
+					// Check if the nearest airport has a problematic IATA code
+					nearest.IATA = a.ReplaceProblematicIATA(nearest.IATA)
 					trip.DestinationAirport = nearest
 					foundDestination = true
 					fmt.Printf("Using nearest airport for %s: %s (%s)\n", destinationCity, nearest.Name, nearest.IATA)
@@ -146,10 +219,34 @@ func (a *AirportService) GetAirports(departureCity, destinationCity string) (*dt
 		return nil, fmt.Errorf("could not find airports for both %s and %s", departureCity, destinationCity)
 	}
 	if !foundDeparture {
-		return nil, fmt.Errorf("could not find valid IATA airport for %s", departureCity)
+		replacement, err := a.NoAirportInCity(departureCity)
+		if err != nil {
+			return nil, err
+		}
+
+		airport, exists := a.FindAirport(replacement)
+		if !exists {		
+			return nil, fmt.Errorf("could not find valid IATA airport for %s", departureCity)
+		}
+
+		// Check if the airport has a problematic IATA code
+		airport.IATA = a.ReplaceProblematicIATA(airport.IATA)
+		trip.DepartureAirport = airport
 	}
 	if !foundDestination {
-		return nil, fmt.Errorf("could not find valid IATA airport for %s", destinationCity)
+		replacement, err := a.NoAirportInCity(destinationCity)
+		if err != nil {
+			return nil, err
+		}
+
+		airport, exists := a.FindAirport(replacement)
+		if !exists {		
+			return nil, fmt.Errorf("could not find valid IATA airport for %s", destinationCity)
+		}
+
+		// Check if the airport has a problematic IATA code
+		airport.IATA = a.ReplaceProblematicIATA(airport.IATA)
+		trip.DestinationAirport = airport
 	}
 
 	return &trip, nil
@@ -220,17 +317,17 @@ func (a *AirportService) SetCache(cities string, airportData dtos.Trip) {
 }
 
 
-func haversine(lat1, lon1, lat2, lon2 float64) float64 {
+func (a *AirportService) Haversine(lat1, lon1, lat2, lon2 float64) float64 {
 	const RAD = 6371 // Earth radius in km
 
 	dLat := (lat2 - lat1) * (math.Pi / 180)
 	dLon := (lon2 - lon1) * (math.Pi / 180)
 
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+	ar := math.Sin(dLat/2)*math.Sin(dLat/2) +
 		math.Cos(lat1*(math.Pi/180))*math.Cos(lat2*(math.Pi/180))*
 			math.Sin(dLon/2)*math.Sin(dLon/2)
 
-	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	c := 2 * math.Atan2(math.Sqrt(ar), math.Sqrt(1-ar))
 
 	return RAD * c
 }
@@ -257,18 +354,17 @@ func (a *AirportService) FindNearestAirport(airport dtos.AirportData, airportsLi
 		}
 		
 		// Calculate distance between airports
-		distance := haversine(ap.Latitude, ap.Longitude, airport.Latitude, airport.Longitude)
+		distance := a.Haversine(ap.Latitude, ap.Longitude, airport.Latitude, airport.Longitude)
 		
-		// Update nearest airport if this one is closer
 		if distance < minDistance {
 			minDistance = distance
-			nearest = ap // Use the airport from the list, not the original airport
+			nearest = ap 
 			foundValidAirport = true
 			fmt.Printf("Found closer airport: %s (%s) at distance %.2f km\n", ap.Name, ap.IATA, distance)
 		}
 	}
 	
-	// If we found a valid airport, return it
+	// If valid airport, return it
 	if foundValidAirport {
 		fmt.Printf("Closest airport to %s is %s (%s) at distance %.2f km\n", 
 			airport.City, nearest.Name, nearest.IATA, minDistance)
@@ -278,4 +374,67 @@ func (a *AirportService) FindNearestAirport(airport dtos.AirportData, airportsLi
 	// If no valid airport was found, return the original airport as fallback
 	fmt.Printf("Warning: No valid airport with IATA code found near %s, using original airport\n", airport.City)
 	return airport
+}
+
+
+func (a *AirportService) FindAirport(city string) (dtos.AirportData, bool) {
+	if a == nil || a.AirportsMap == nil {
+		fmt.Println("Warning: AirportService or AirportsMap is nil in FindAirport")
+		return dtos.AirportData{}, false
+	}
+	
+	if city == "" {
+		fmt.Println("Warning: city parameter is empty in FindAirport")
+		return dtos.AirportData{}, false
+	}
+	
+	fmt.Printf("Looking for airport in %s\n", city)
+	
+	for _, airport := range a.AirportsMap {
+		if airport.City == city || strings.Contains(airport.Name, city) {
+			if airport.IATA != "" {
+				fmt.Printf("Found airport for %s: %s (%s)\n", city, airport.Name, airport.IATA)
+				return airport, true
+			} else {
+				fmt.Printf("Warning: No IATA code for airport in %s, searching nearby...\n", city)
+				nearest := a.FindNearestAirport(airport, a.AirportsMap)
+				if nearest.IATA != "" {
+					fmt.Printf("Using nearest airport for %s: %s (%s)\n", city, nearest.Name, nearest.IATA)
+					return nearest, true
+				}
+			}
+		}
+	}
+	
+	fmt.Printf("Could not find valid IATA airport for %s\n", city)
+	return dtos.AirportData{}, false
+}
+
+func (a *AirportService) NoAirportInCity(city string) (string, error) {
+	if replacement, exists := constants.AIRPORT_FALLBACK[city]; exists {
+		return replacement, nil
+	}
+	return "", fmt.Errorf("fallback failed: failed to find replacement airport for %s", city)
+}
+
+func (a *AirportService) IsDriveDistance(departureCity, destinationCity string) (bool, error) {
+
+	// Victoria-Vancouver flights fall within the KM threshold of flights
+	// If this trip is encountered, its a flight
+	if departureCity  == "Victoria" || destinationCity == "Victoria" {
+		return true, nil
+	}
+
+	trip, err := a.GetAirports(departureCity, destinationCity)
+	if err != nil {
+		return true, err
+	}
+
+
+	distance := a.Haversine(trip.DepartureAirport.Latitude, trip.DepartureAirport.Longitude, trip.DestinationAirport.Latitude, trip.DestinationAirport.Longitude)
+
+	if distance < constants.KM_THRESHHOLD {
+		return true, nil
+	}
+	return false, nil
 }
